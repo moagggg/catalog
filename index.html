@@ -17,6 +17,8 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 .btn.sm{min-height:44px;padding:0 10px;font-size:14px}.btn:active{filter:brightness(.92)}
 .chips{display:flex;gap:6px;overflow-x:auto;padding-top:8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
 .chip{flex:none;min-height:44px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:#fff;font-size:14px;display:flex;align-items:center;cursor:pointer}
+.chips.sub .chip{min-height:38px;font-size:13px;border-radius:14px;background:#fafafa}.chip .n{color:var(--mute);font-size:11px;margin-left:4px}
+.prov{font-size:13px;line-height:1.45;margin:8px 0;padding:8px 10px;background:#f6f7f9;border-radius:10px;word-break:break-word}.prov b{color:#555;font-weight:600}.prov a{color:var(--acc)}
 .chip.on{background:var(--acc2);border-color:var(--acc);color:var(--acc);font-weight:600}
 .meta{color:var(--mute);font-size:13px}
 .bar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px}
@@ -75,6 +77,7 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
  <div class="top">
   <div class="srow"><input id="q" type="search" placeholder="Search brand, code, or paste an album link" enterkeyhint="search"><button class="btn" id="fBtn" aria-label="Filters">⚙︎ <span id="fCount"></span></button></div>
   <div class="chips" id="storeChips"></div>
+  <div class="chips sub hidden" id="subChips"></div>
  </div>
  <div class="prog" id="prog"></div>
  <div class="bar"><span class="meta" id="resInfo">Loading…</span><span class="meta hidden" id="modeInfo"></span><button class="chip" id="storeBtn">All stores ▾</button></div>
@@ -170,18 +173,20 @@ function toast(m){const d=document.createElement("div");d.className="toast";d.te
 function addRow(r){const si=r[0];r=r.slice(1);const s=S.stores[si],key=s.id+"/"+r[0];if(ALB.has(key))return;
  const catNames=r[4].map(c=>s.cats[c]?s.cats[c][0]:""),catEn=r[4].map(c=>s.cats[c]?(s.cats[c][2]||s.cats[c][0]):""),cols=(r[13]||[]).map(i=>S.colors[i]);
  const a={si,sid:s.id,id:r[0],title:r[1],cover:r[2],count:r[3],cats:r[4],catNames,catEn,code:r[5],size:r[6],price:r[7],t:r[8],b:r[9],ty:r[10],gi:r[11],group:GROUPS[r[11]],key,
-  en:r[12]||"",colors:r[13]||[],fit:r[14]||0,url:`${s.base}/albums/${r[0]}?uid=1`,
-  q:" "+fold(r[12]+" "+r[1]+" "+catNames.join(" ")+" "+catEn.join(" ")+" "+r[5]+" "+s.id+" "+s.name+" "+r[0]+" "+(r[9]>=0?S.brands[r[9]]:"")+" "+(r[10]>=0?S.types[r[10]]:"")+" "+(GROUPS[r[11]]||"")+" "+cols.join(" ")+" "+r[6])};
+  en:r[12]||"",colors:r[13]||[],fit:r[14]||0,sc:r[15]||0,lit:r[16]||"",url:`${s.base}/albums/${r[0]}?uid=1`,
+  q:" "+fold(r[12]+" "+r[1]+" "+catNames.join(" ")+" "+catEn.join(" ")+" "+r[5]+" "+s.id+" "+s.name+" "+r[0]+" "+(r[9]>=0?S.brands[r[9]]:"")+" "+(r[10]>=0?S.types[r[10]]:"")+" "+(GROUPS[r[11]]||"")+" "+subName(r[11],r[15])+" "+(r[16]||"")+" "+cols.join(" ")+" "+r[6])};
  ALB.set(key,a);ALL.push(a)}
-async function loadShard(gi,ci){const n=`g${gi}-${ci}`;if(LOADED.has(n))return;LOADED.add(n);
+const subName=(gi,sc)=>{const g=S.groups[gi];return g&&g.subs&&g.subs[sc]?g.subs[sc][0]:""};
+const shardsOf=gi=>S.groups[gi].files.flatMap(([B,n])=>Array.from({length:n},(_,c)=>`b${B}-g${gi}-${c}`));
+async function loadShard(gi,n){if(LOADED.has(n))return;LOADED.add(n);
  const r=await fetch(`data/${n}.json`);if(!r.ok){LOADED.delete(n);throw new Error(n+" "+r.status)}for(const row of await r.json())addRow(row);GDONE[gi]=(GDONE[gi]||0)+1}
-const GDONE={};const groupLoaded=gi=>(GDONE[gi]||0)>=S.groups[gi].chunks;
+const GDONE={};const groupLoaded=gi=>(GDONE[gi]||0)>=shardsOf(gi).length;
 let loadingAll=null;
 let GSEL="";  // selected style group index ("" = New arrivals / everything)
 function needAll(){return GSEL===""&&($("#q").value.trim()||$("#fSeller").value!==""||$("#fHist").checked||$("#fPrice").checked||$("#fThumb").checked||$("#fColor").value!==""||$("#fFit").checked||$("#fSort").value!=="new")}
 async function ensure(){const list=[];if(GSEL===""&&!needAll())return;
  const want=GSEL===""?S.groups.map((_,i)=>i):[+GSEL];
- for(const i of want)for(let c=0;c<S.groups[i].chunks;c++)if(!LOADED.has(`g${i}-${c}`))list.push([i,c]);
+ for(const i of want)for(const n of shardsOf(i))if(!LOADED.has(n))list.push([i,n]);
  if(!list.length)return;
  // all-store browsing without search: recent rows are enough to start, keep loading in background
  let done=0;const total=list.length;$("#prog").style.width="5%";
@@ -213,28 +218,35 @@ function fillStores(){fSeller.innerHTML=`<option value="">All stores</option>`+S
  $("#storeChips").innerHTML=`<div class="chip on" data-g="">✨ New</div>`+S.groups.map((g,i)=>g.count?`<div class="chip" data-g="${i}">${esc(g.name)}</div>`:"").join("")}
 function tiles(){return `<div class="tiles">`+S.groups.map((g,i)=>!g.count?"":`<div class="tile" data-g="${i}">${g.cover?`<img loading="lazy" src="t/${S.stores[g.cover[0]].id}/${g.cover[1]}.webp" alt="">`:""}<span><b>${esc(g.name)}</b><br>${g.count.toLocaleString()}</span></div>`).join("")+`</div><div class="meta" style="padding:4px 12px 8px;font-weight:600">New arrivals in all stores</div>`}
 const cName=c=>c[2]&&c[2]!==c[0]?`${c[2]} (${c[0]})`:c[0];
+const sName=s=>s.name.replace(/\s*⚠.*$/,"");
+function catLabel(a){const s=S.stores[a.si];const c=a.cats.map(i=>s.cats[i]).filter(Boolean);const leaf=c.find(x=>x[1]!=null)||c[0];return leaf?cName(leaf):""}
 function fillCats(){const si=fSeller.value;if(si===""){fCat.innerHTML='<option value="">All categories</option>';fCat.disabled=true;return}
  fCat.disabled=false;const s=S.stores[si];let h='<option value="">All categories</option>';
  const kids=i=>s.cats.map((c,j)=>[c,j]).filter(([c])=>c[1]===i);
  s.cats.forEach((c,i)=>{if(c[1]==null||!s.cats[c[1]]){h+=`<option value="${i}">${esc(cName(c))}</option>`;for(const [k,j] of kids(i))h+=`<option value="${j}">&nbsp;&nbsp;└ ${esc(cName(k))}</option>`}});
  fCat.innerHTML=h}
+let SSEL="";
+function fillSubs(){const el=$("#subChips");if(GSEL===""){el.classList.add("hidden");el.innerHTML="";return}const g=S.groups[GSEL];const subs=(g.subs||[]).map((x,i)=>[x,i]).filter(([x])=>x[1]);
+ if(subs.length<2){el.classList.add("hidden");el.innerHTML="";return}el.classList.remove("hidden");
+ el.innerHTML=`<div class="chip${SSEL===""?" on":""}" data-s="">All ${esc(g.name)}</div>`+subs.map(([x,i])=>`<div class="chip${SSEL===String(i)?" on":""}" data-s="${i}">${esc(x[0])}<span class="n">${x[1].toLocaleString()}</span></div>`).join("")}
+$("#subChips").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;SSEL=c.dataset.s;fillSubs();apply();ensure()};
 function syncChips(){$$("#storeChips .chip").forEach(c=>c.classList.toggle("on",c.dataset.g===GSEL));$("#storeBtn").textContent=(fSeller.value===""?"All stores":S.stores[fSeller.value].id)+" ▾";
  const n=[fCat.value,$("#fThumb").checked,$("#fHist").checked,$("#fPrice").checked,$("#fColor").value,$("#fFit").checked,$("#fSort").value!=="new"].filter(Boolean).length;$("#fCount").textContent=n?n:""}
 let RES=[],shown=0;
 function apply(keepScroll){const raw=$("#q").value.trim(),m=raw.match(/albums\/(\d+)/),q=terms(m?m[1]:raw),col=$("#fColor").value,fit=$("#fFit").checked,si=fSeller.value,ci=fCat.value,th=$("#fThumb").checked,hi=$("#fHist").checked,pr=$("#fPrice").checked;
- RES=ALL.filter(a=>(GSEL===""||a.gi==GSEL)&&(si===""||a.si==si)&&(ci===""||a.cats.includes(+ci))&&(!th||a.t||SERVER)&&(!hi||HIST[a.key])&&(!pr||a.price)&&(col===""||a.colors.includes(+col))&&(!fit||a.fit)&&matchQ(a,q));
+ RES=ALL.filter(a=>(GSEL===""||a.gi==GSEL)&&(SSEL===""||GSEL===""||a.sc==SSEL)&&(si===""||a.si==si)&&(ci===""||a.cats.includes(+ci))&&(!th||a.t||SERVER)&&(!hi||HIST[a.key])&&(!pr||a.price)&&(col===""||a.colors.includes(+col))&&(!fit||a.fit)&&matchQ(a,q));
  const so=$("#fSort").value;
  if(so==="new")RES.sort((a,b)=>b.id-a.id);else if(so==="old")RES.sort((a,b)=>a.id-b.id);else if(so==="title")RES.sort((a,b)=>a.title.localeCompare(b.title));else RES.sort((a,b)=>b.count-a.count);
  const prev=window._shownKeys||[];const same=keepScroll&&prev.length&&prev.every((k,i)=>RES[i]&&RES[i].key===k);
  if(!same){const keep=keepScroll?Math.max(shown,40):40;shown=0;$("#grid").innerHTML="";more(keep)}else $("#moreBtn").classList.toggle("hidden",shown>=RES.length);
  const total=GSEL===""?S.groups.reduce((n,g)=>n+g.count,0):S.groups[GSEL].count;const loaded=GSEL===""?ALL.length:ALL.filter(a=>a.gi==GSEL).length;
  const home=GSEL===""&&!q.length&&si===""&&!th&&!hi&&!pr&&col===""&&!fit&&so==="new";$("#tilesWrap").innerHTML=home?tiles():"";
- $("#resInfo").textContent=home?"Browse by style":(GSEL===""?"":S.groups[GSEL].name+": ")+`${RES.length.toLocaleString()} albums`+(si!==""?` in ${S.stores[si].id}`:"")+(loaded<total?` · loading ${Math.round(100*loaded/total)}%`:"");
+ $("#resInfo").textContent=home?"Browse by style":(GSEL===""?"":S.groups[GSEL].name+(SSEL!==""?" › "+subName(+GSEL,+SSEL):"")+": ")+`${RES.length.toLocaleString()} albums`+(si!==""?` in ${S.stores[si].id}`:"")+(loaded<total?` · loading ${Math.round(100*loaded/total)}%`:"");
  $("#emptyMsg").classList.toggle("hidden",!!RES.length||(loaded<total&&!home));$("#moreBtn").classList.toggle("hidden",shown>=RES.length&&(loaded>=total||home));syncChips()}
 function card(a){const s=S.stores[a.si],src=thumb(a),h=HIST[a.key];
  return `<div class="card${h?" hist":""}"><div class="th" data-ph="${esc(a.key)}">${src?`<img loading="lazy" decoding="async" src="${src}" alt="" onerror="this.remove()">`:esc(a.title.slice(0,40))}
  ${a.count?`<span class="cnt">${a.count} 📷</span>`:""}${h?`<span class="hb">★ ${esc(h[0].contact)} ${fmtD(h[0].date)}</span>`:""}</div>
- <div class="cb"><div class="t">${esc(a.en||a.title||"(untitled)")}</div>${a.en&&a.en!==a.title?`<div class="o">${esc(a.title)}</div>`:""}<div class="s">${esc(s.id)} · ${esc(a.catEn.filter(Boolean)[0]||"—")}</div>
+ <div class="cb"><div class="t">${esc(a.en||a.title||"(untitled)")}</div>${a.en&&a.en!==a.title?`<div class="o">${esc(a.title)}</div>`:""}<div class="s">${esc(sName(s))} · ${esc(catLabel(a)||subName(a.gi,a.sc)||"—")}</div>
  <div class="tags">${a.code?`<span class="tag">#${esc(a.code)}</span>`:""}${a.size?`<span class="tag z${a.fit?" fit":""}">${a.fit?"✓ ":""}${esc(a.size)}</span>`:""}${a.price?`<span class="tag p">¥${esc(a.price)}</span>`:""}</div>
  <div class="acts"><button class="btn sm pri" data-add="${esc(a.key)}">+ Order</button><a class="btn sm" href="${a.url}" target="_blank" rel="noopener" aria-label="Open on Yupoo">↗</a></div></div></div>`}
 function more(n=40){const end=Math.min(RES.length,shown+n);window._shownKeys=RES.slice(0,end).map(a=>a.key);$("#grid").insertAdjacentHTML("beforeend",RES.slice(shown,end).map(card).join(""));shown=end;$("#moreBtn").classList.toggle("hidden",shown>=RES.length)}
@@ -244,19 +256,24 @@ let tmr;$("#q").addEventListener("input",()=>{clearTimeout(tmr);tmr=setTimeout((
 function changed(){fillCatsIfNeeded();apply();ensure()}
 let lastSi=null;function fillCatsIfNeeded(){if(lastSi!==fSeller.value){lastSi=fSeller.value;fillCats()}}
 fSeller.onchange=changed;for(const id of ["#fCat","#fSort","#fThumb","#fHist","#fPrice","#fColor","#fFit"])$(id).onchange=()=>{apply();ensure()};
-function pickGroup(g){GSEL=g;fCat.value="";apply();ensure();scrollTo(0,0);const c=$(`#storeChips .chip[data-g="${g}"]`);if(c)c.scrollIntoView({inline:"center",block:"nearest"})}
+function pickGroup(g){GSEL=g;SSEL="";fillSubs();fCat.value="";apply();ensure();scrollTo(0,0);const c=$(`#storeChips .chip[data-g="${g}"]`);if(c)c.scrollIntoView({inline:"center",block:"nearest"})}
 $("#storeChips").onclick=e=>{const c=e.target.closest(".chip");if(c)pickGroup(c.dataset.g)};
 document.addEventListener("click",e=>{const t=e.target.closest(".tile");if(t)pickGroup(t.dataset.g)});
 $("#storeBtn").onclick=()=>$("#sFilter").classList.add("on");
 $("#fBtn").onclick=()=>$("#sFilter").classList.add("on");
-$("#fReset").onclick=()=>{GSEL="";fSeller.value="";fCat.value="";$("#fSort").value="new";$("#fColor").value="";for(const id of ["#fThumb","#fHist","#fPrice","#fFit"])$(id).checked=false;changed()};
+$("#fReset").onclick=()=>{GSEL="";SSEL="";fillSubs();fSeller.value="";fCat.value="";$("#fSort").value="new";$("#fColor").value="";for(const id of ["#fThumb","#fHist","#fPrice","#fFit"])$(id).checked=false;changed()};
 // ---------- sheets ----------
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ph],[data-add],[data-close]");if(!t)return;
  if(t.dataset.close!==undefined)return t.closest(".sheet").classList.remove("on");
  if(t.dataset.ph)openPhotos(ALB.get(t.dataset.ph));if(t.dataset.add)openAdd(ALB.get(t.dataset.add))});
 $$(".sheet").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("on")}));
 async function openPhotos(a){if(!a)return;const s=S.stores[a.si],h=HIST[a.key];const src=thumb(a);
- $("#pBody").innerHTML=`<h3 style="margin:4px 40px 4px 0">${esc(a.title)}</h3><div class="meta">${esc(s.name)} · ${a.count||"?"} photos${s.id==="hzh890"?" · password ***REMOVED***":""}</div>
+ $("#pBody").innerHTML=`<h3 style="margin:4px 40px 4px 0">${esc(a.title)}</h3><div class="meta">${esc(a.en&&a.en!==a.title?a.en:"")}</div>
+ <div class="prov"><div><b>Style:</b> ${esc(a.group)}${subName(a.gi,a.sc)?" › "+esc(subName(a.gi,a.sc)):""}</div>
+ <div><b>Seller:</b> <a href="${s.base}/albums?uid=1" target="_blank" rel="noopener">${esc(sName(s))}</a> (${esc(s.id)}.x.yupoo.com)${s.warn?` <span style="color:#b45309">⚠ ${esc(s.warn)}</span>`:""}</div>
+ <div><b>Album title:</b> ${esc(a.title)}${a.lit?`<br><b>Translation:</b> ${esc(a.lit)}`:""}${a.en?`<br><b>English:</b> ${esc(a.en)}`:""}</div>
+ <div><b>Album:</b> <a href="${a.url}" target="_blank" rel="noopener">${esc(a.url.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a> · ${a.count||"?"} photos${s.id==="hzh890"?" · password ***REMOVED***":""}</div>
+ <div><b>Seller categories:</b> ${a.cats.length?a.cats.map(i=>s.cats[i]).filter(Boolean).map(c=>`<a href="${s.base}/categories/${c[3]}?uid=1" target="_blank" rel="noopener">${esc(cName(c))}</a>`).join(", "):"none"}</div></div>
  ${h?`<div class="info" style="margin:8px 0">★ ${h.map(x=>`${esc(x.contact)} ${fmtD(x.date)}${x.label?` “${esc(x.label)}”`:""}${x.order?` (${esc(x.order)})`:""}`).join("; ")}</div>`:""}
  <div class="row2" style="margin-top:8px"><button class="btn pri" data-add="${esc(a.key)}">+ Add to order</button><a class="btn" href="${a.url}" target="_blank" rel="noopener">Open on Yupoo ↗</a></div>
  <div id="pDesc" class="meta" style="white-space:pre-wrap;margin-top:8px"></div><div class="gal" id="pGal">${src?`<img src="${src}" alt="">`:""}</div>
@@ -273,23 +290,24 @@ let adding=null;
 function openAdd(a){if(!a)return;adding=a;$("#aHead").textContent=`${a.title} · ${a.sid}`;$("#aLabel").value=autoLabel(a);$("#aContact").innerHTML=contactOpts(CONTACTS.includes(lastContact)?lastContact:"");$("#aGroup").innerHTML=groupOpts(a.group);
  $("#aSize").value=DEF[kind(a)];$("#aColor").value=a.colors&&a.colors.length===1?S.colors[a.colors[0]]:"";$("#aQty").value=1;$("#aNotes").value="";$("#sPhotos").classList.remove("on");$("#sAdd").classList.add("on")}
 $("#aSave").onclick=()=>{const a=adding;lastContact=$("#aContact").value;localStorage.setItem("yupooContact",lastContact);
- CART.push({key:a.key,seller:a.sid,id:a.id,title:a.title,code:a.code,price:a.price?"¥"+a.price:"",url:a.url,kind:kind(a),group:$("#aGroup").value,t:a.t,label:$("#aLabel").value.trim()||autoLabel(a),contact:lastContact,
+ CART.push({key:a.key,seller:a.sid,sellerName:sName(S.stores[a.si]),en:a.en,sub:subName(a.gi,a.sc),sellerCat:catLabel(a),catUrl:(()=>{const s=S.stores[a.si],c=a.cats.map(i=>s.cats[i]).filter(Boolean).pop();return c?`${s.base}/categories/${c[3]}?uid=1`:""})(),id:a.id,title:a.title,code:a.code,price:a.price?"¥"+a.price:"",url:a.url,kind:kind(a),group:$("#aGroup").value,t:a.t,label:$("#aLabel").value.trim()||autoLabel(a),contact:lastContact,
   size:$("#aSize").value.trim(),color:$("#aColor").value.trim(),qty:Math.max(1,+$("#aQty").value||1),notes:$("#aNotes").value.trim(),added:new Date().toISOString()});
  saveCart();$("#sAdd").classList.remove("on");toast("Added to cart: "+CART[CART.length-1].label)};
 const gOf=c=>c.group||(c.group=ALB.get(c.key)?ALB.get(c.key).group:"Unsorted");
 function sortedCart(){return CART.map((c,i)=>({...c,i})).sort((a,b)=>GROUPS.indexOf(gOf(a))-GROUPS.indexOf(gOf(b))||a.i-b.i)}
+const stName=c=>c.sellerName||(()=>{const s=S&&S.stores.find(x=>x.id===c.seller);return s?sName(s):c.seller})();
 function exportText(items,stock){const L=[],used={},n=items.reduce((k,c)=>k+(+c.qty||1),0);let i=0,last=null;
  L.push(`Hi! New order, ${n} item${n>1?"s":""}:`);
  for(const c of items){const g=gOf(c);if(g!==last){L.push("",`*${g.toUpperCase()}*`);last=g}i++;
   const d=DEF[c.kind]??"";if(c.size&&c.size===d)used[c.kind]=1;
   const det=[];if(c.code)det.push("Code "+c.code);det.push("Size "+(c.size||"–"));if(c.color)det.push("Color "+c.color);det.push("Qty "+(c.qty||1));if(c.price)det.push("Price "+c.price);
-  L.push(`${i}. ${c.label}`,c.url,det.join(" | "));if(c.notes)L.push("Note: "+c.notes)}
+  L.push(`${i}. ${c.label}`,c.url,`Store: ${stName(c)}`+(c.seller&&stName(c)!==c.seller?` (${c.seller})`:""),det.join(" | "));if(c.notes)L.push("Note: "+c.notes)}
  L.push("",`Total: ${n} item${n>1?"s":""}`);
  const sz=[];if(used.shirt)sz.push("shirts USA XL (Asian 3XL)");if(used.pants)sz.push("pants 34x32 (34 waist, 32 length)");if(used.shoes)sz.push("shoes 45 (US 11.5)");if(used.belt)sz.push("belt 115cm");
  if(sz.length)L.push("My sizes: "+sz.join(", "));
  if(stock)L.push("Please confirm everything is in stock (sizes and colors) before I pay, so we don't have to go back and forth after payment. Thank you!");
  return L.join("\n")}
-function csv(items){const cols=["group","label","title","seller","code","price","size","color","qty","notes","contact","url"];
+function csv(items){const cols=["group","sub","label","title","en","seller","sellerName","sellerCat","catUrl","code","price","size","color","qty","notes","contact","url"];
  return [cols.join(",")].concat(items.map(c=>cols.map(k=>`"${String(c[k]??"").replace(/"/g,'""')}"`).join(","))).join("\r\n")}
 function download(name,text){const b=new Blob(["\ufeff"+text],{type:"text/csv;charset=utf-8"});const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download=name;document.body.append(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
 const stockOn=()=>localStorage.getItem("yupooStock")!=="0";
@@ -337,7 +355,7 @@ function renderHist(){const has=!!HDATA;$("#histEmpty").classList.toggle("hidden
   return `<div class="group"><h3><span class="ct">${esc(o.contact)}</span>${fmtD(o.date)} · ${esc(o.title)}</h3><span class="status">${esc(o.status)}</span>${items}<div style="margin-top:8px">${o.notes.map(n=>`<div class="note">${esc(n)}</div>`).join("")}</div></div>`}).join("");
  $("#hNotes").innerHTML=HDATA.notes.filter(n=>!f||n.contact===f).map(n=>`<div class="note"><span class="ct">${esc(n.contact)}</span><span class="meta">${fmtD(n.dt)}</span><br>${esc(n.text).replace(/\n/g,"<br>")}</div>`).join("")}
 async function ensureHistAlbums(){if(!HDATA)return;const miss=HDATA.curated.some(o=>o.albums.some(k=>!ALB.has(k)&&S.stores.some(s=>s.id===k.split("/")[0])));
- if(!miss)return;for(let i=0;i<S.groups.length;i++)for(let c=0;c<S.groups[i].chunks;c++)await loadShard(i,c).catch(()=>{});renderHist()}
+ if(!miss)return;for(let i=0;i<S.groups.length;i++)for(const n of shardsOf(i))await loadShard(i,n).catch(()=>{});renderHist()}
 // ---------- nav ----------
 function view(v){$$(".nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));for(const x of ["catalog","history","cart"])$("#v-"+x).classList.toggle("hidden",x!==v);
  if(v==="cart")renderCart();if(v==="history"){renderHist();ensureHistAlbums()}scrollTo(0,0)}
