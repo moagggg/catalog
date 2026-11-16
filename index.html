@@ -201,7 +201,7 @@ function addRow(r){const si=r[0];r=r.slice(1);const s=S.stores[si],key=s.id+"/"+
 const subName=(gi,sc)=>{const g=S.groups[gi];return g&&g.subs&&g.subs[sc]?g.subs[sc][0]:""};
 const shardsOf=gi=>S.groups[gi].files.flatMap(([B,n])=>Array.from({length:n},(_,c)=>`b${B}-g${gi}-${c}`));
 async function loadShard(gi,n){if(LOADED.has(n))return;LOADED.add(n);
- const r=await fetch(`data/${n}.json`);if(!r.ok){LOADED.delete(n);throw new Error(n+" "+r.status)}for(const row of await r.json())addRow(row);GDONE[gi]=(GDONE[gi]||0)+1}
+ let r;for(let k=0;k<4;k++){try{r=await fetch(`data/${n}.json`);if(r.ok||r.status===404)break}catch(e){r={ok:false,status:"network"}}await new Promise(z=>setTimeout(z,800*(k+1)))}if(!r.ok){LOADED.delete(n);throw new Error(n+" "+r.status)}for(const row of await r.json())addRow(row);GDONE[gi]=(GDONE[gi]||0)+1}
 const GDONE={};const groupLoaded=gi=>(GDONE[gi]||0)>=shardsOf(gi).length;
 let loadingAll=null;
 let GSEL="";  // selected style group index ("" = New arrivals / everything)
