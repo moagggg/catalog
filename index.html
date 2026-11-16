@@ -270,7 +270,7 @@ $$(".sheet").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classLi
 async function openPhotos(a){if(!a)return;const s=S.stores[a.si],h=HIST[a.key];const src=thumb(a);
  $("#pBody").innerHTML=`<h3 style="margin:4px 40px 4px 0">${esc(a.title)}</h3><div class="meta">${esc(a.en&&a.en!==a.title?a.en:"")}</div>
  <div class="prov"><div><b>Style:</b> ${esc(a.group)}${subName(a.gi,a.sc)?" › "+esc(subName(a.gi,a.sc)):""}</div>
- <div><b>Seller:</b> <a href="${s.base}/albums?uid=1" target="_blank" rel="noopener">${esc(sName(s))}</a> (${esc(s.id)}.x.yupoo.com)${s.warn?` <span style="color:#b45309">⚠ ${esc(s.warn)}</span>`:""}</div>
+ <div><b>Seller:</b> <a href="${s.home||s.base+"/albums?uid=1"}" target="_blank" rel="noopener">${esc(sName(s))}</a> (${s.home?"Google Sheet product list":esc(s.id)+".x.yupoo.com"})${s.warn?` <span style="color:#b45309">⚠ ${esc(s.warn)}</span>`:""}</div>
  <div><b>Album title:</b> ${esc(a.title)}${a.lit?`<br><b>Translation:</b> ${esc(a.lit)}`:""}${a.en?`<br><b>English:</b> ${esc(a.en)}`:""}</div>
  <div><b>${a.ext?"Weidian item":"Album"}:</b> <a href="${a.url}" target="_blank" rel="noopener">${esc(a.url.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a>${a.ext?"":` · ${a.count||"?"} photos`}${s.id==="hzh890"?" · password ***REMOVED***":""}</div>
  ${a.yp?`<div><b>Yupoo album:</b> <a href="${a.yp}" target="_blank" rel="noopener">${esc(a.yp.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a></div>`:""}${a.price&&a.ext?`<div><b>Price:</b> ¥${esc(a.price)}${a.usd?` (≈ $${esc(a.usd)})`:""}</div>`:""}
@@ -302,7 +302,7 @@ function exportText(items,stock){const L=[],used={},n=items.reduce((k,c)=>k+(+c.
  for(const c of items){const g=gOf(c);if(g!==last){L.push("",`*${g.toUpperCase()}*`);last=g}i++;
   const d=DEF[c.kind]??"";if(c.size&&c.size===d)used[c.kind]=1;
   const det=[];if(c.code)det.push("Code "+c.code);det.push("Size "+(c.size||"–"));if(c.color)det.push("Color "+c.color);det.push("Qty "+(c.qty||1));if(c.price)det.push("Price "+c.price);
-  L.push(`${i}. ${c.label}`,c.url,`Store: ${stName(c)}`+(c.seller&&stName(c)!==c.seller?` (${c.seller})`:""),det.join(" | "));if(c.notes)L.push("Note: "+c.notes)}
+  L.push(`${i}. ${c.label}`,c.url,`Store: ${stName(c)}`+(c.seller&&!stName(c).includes(c.seller)?` (${c.seller})`:""),det.join(" | "));if(c.notes)L.push("Note: "+c.notes)}
  L.push("",`Total: ${n} item${n>1?"s":""}`);
  const sz=[];if(used.shirt)sz.push("shirts USA XL (Asian 3XL)");if(used.pants)sz.push("pants 34x32 (34 waist, 32 length)");if(used.shoes)sz.push("shoes 45 (US 11.5)");if(used.belt)sz.push("belt 115cm");
  if(sz.length)L.push("My sizes: "+sz.join(", "));
