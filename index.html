@@ -113,7 +113,7 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 </nav>
 
 <div class="sheet" id="sBrand"><div class="sbox"><button class="x" data-close>×</button>
- <h3 style="margin:4px 0 6px">Brand</h3><input id="bQ" type="search" placeholder="Search brands (e.g. moncler, lv, ysl)">
+ <h3 style="margin:4px 0 6px">Brand</h3><input id="bQ" type="search" placeholder="Search brands (moncler, lv, ysl, 古驰, 小香)">
  <div class="meta" id="bInfo" style="margin:6px 0"></div><div id="bList" class="blist"></div></div></div>
 <div class="sheet" id="sFilter"><div class="sbox"><button class="x" data-close>×</button>
  <h3 style="margin:4px 0 6px">Filters</h3>
@@ -121,8 +121,9 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
  <label class="lab">Category</label><select id="fCat"></select>
  <label class="lab">Sort</label><select id="fSort"><option value="new">Newest first</option><option value="old">Oldest first</option><option value="title">Title A→Z</option><option value="photos">Most photos</option></select>
  <label class="lab">Color</label><select id="fColor"><option value="">Any color</option></select>
+ <label class="lab">Gender</label><select id="fGender"><option value="">Any</option><option value="m">Men's (incl. unisex & unmarked)</option><option value="w">Women's (incl. unisex)</option><option value="u">Unisex only</option><option value="k">Kids</option></select>
  <label class="lab">Brand</label><button class="btn" id="fBrandBtn" style="width:100%;justify-content:flex-start">All brands ▾</button>
- <label class="lab"><input type="checkbox" id="fFit" style="width:auto"> Fits my sizes (XL / Asian 3XL, waist 34, EU 45)</label>
+ <label class="lab"><input type="checkbox" id="fFit" style="width:auto"> Fits my sizes (XL–Asian 3XL, waist 34, EU 45 / US 11.5, belt 115 cm)</label>
  <label class="lab"><input type="checkbox" id="fThumb" style="width:auto"> Only albums with a photo preview</label>
  <label class="lab"><input type="checkbox" id="fHist" style="width:auto"> Only previously ordered or asked about (★)</label>
  <label class="lab"><input type="checkbox" id="fPrice" style="width:auto"> Only albums with a price in the title</label>
@@ -171,25 +172,31 @@ const minPrice=vs=>{const p=vs.map(v=>parseFloat(v.price)).filter(x=>x>0);return
 const CN=g=>SHOWBL?g.countBL:g.count;
 const fold=t=>String(t||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 // search synonyms: any phrase in a group matches the others (query "button down" finds dress shirts, "cologne" finds perfume...)
-const SYN=[["dress shirt","button-down","button down","button-up","button up","oxford shirt","dress shirts"],["sneakers","sneaker","trainers","kicks","runners","shoes","shoe"],
- ["perfume","cologne","fragrance","parfum","scent","eau de"],["t-shirt","tee","tees","tshirt","t shirt","t-shirts"],["hoodie","hoodies","sweatshirt"],["sweater","sweaters","jumper","knit","cardigan","knitwear"],
- ["pants","trousers","slacks","chinos"],["jacket","jackets","coat","coats","outerwear"],["down jacket","puffer","down & padded"],["earbuds","airpods","earphones","headphones","audio"],
- ["electronics","gadget","gadgets","tech"],["bag","bags","purse","purses","handbag","tote"],["kids","kid","kids'","children","child","baby","toddler"],["women's","women","womens","ladies","woman"],
- ["toy","toys","lego","figure","plush"],["glasses","sunglasses","eyewear","shades"],["watch","watches"],["belt","belts"],["wallet","wallets","card holder"],["slides","slippers","sandals","slides & sandals"],
- ["suit","suits","blazer"],["polo","polos","polo shirt"],["jeans","denim"],["shorts","short pants"],["set","sets","tracksuit","tracksuits"],["hat","hats","cap","caps","beanie"],
- ["louis vuitton","lv"],["loro piana","lp"],["saint laurent","ysl"],["dolce & gabbana","d&g","dolce"],["bottega veneta","bottega","bv"],["ralph lauren","polo ralph"],["hermes","hermès"],["balenciaga","blcg"]];
+// category synonyms match the listing's own structured fields (a.qs: English title, type, group, brand, model, color, gender, material),
+// so a store that also files a jacket under "Perfume" doesn't show up for "cologne"; brand synonyms match everything (a.q)
+const SYN=[["dress shirt","button-down","button down","button-up","button up","oxford shirt","dress shirts","衬衫","衬衣"],["sneakers","sneaker","trainers","kicks","runners","shoes","shoe","鞋","球鞋","运动鞋"],
+ ["perfume","cologne","fragrance","parfum","scent","eau de","香水"],["t-shirt","tee","tees","tshirt","t shirt","t-shirts","短袖","t恤"],["hoodie","hoodies","sweatshirt","卫衣"],["sweater","sweaters","jumper","knit","cardigan","knitwear","毛衣","针织"],
+ ["pants","trousers","slacks","chinos","长裤","裤子"],["jacket","jackets","coat","coats","outerwear","夹克","外套"],["down jacket","puffer","down & padded","羽绒服","羽绒"],["earbuds","airpods","earphones","headphones","audio","耳机"],
+ ["electronics","gadget","gadgets","tech"],["bag","bags","purse","purses","handbag","tote","包"],["kids","kid","kids'","children","child","baby","toddler","童装"],["women's","women","womens","ladies","woman","女"],
+ ["toy","toys","figure","figures","plush","玩具"],["glasses","sunglasses","eyewear","shades","眼镜"],["watch","watches","手表"],["belt","belts","皮带","腰带"],["wallet","wallets","card holder","钱包","卡包"],["slides","slippers","sandals","slides & sandals","拖鞋","凉鞋"],
+ ["suit","suits","blazer","西装"],["polo","polos","polo shirt","翻领"],["jeans","denim","牛仔裤"],["shorts","short pants","短裤"],["set","sets","tracksuit","tracksuits","套装"],["hat","hats","cap","caps","beanie","帽子"],
+ ["unisex","couples","男女同款","情侣"],["grey","gray"],["beige","cream","ivory"],["multicolor","multicolour","multi-color"],["leather","calfskin","lambskin"],["scarf","scarves","围巾"]].map(g=>Object.assign(g,{c:1}));
+const SYNB=[["lego","building blocks","building block","乐高","积木"],["louis vuitton","lv"],["loro piana","lp"],["saint laurent","ysl"],["dolce & gabbana","d&g","dolce"],["bottega veneta","bottega","bv"],["ralph lauren","polo ralph"],["hermes","hermès"],["balenciaga","blcg"]];
 function terms(raw){let q=" "+fold(raw).replace(/\s+/g," ")+" ";const out=[];
- for(const g of SYN){const ph=[...g].sort((a,b)=>b.length-a.length).find(p=>q.includes(" "+p+" "));if(ph){q=q.replace(" "+ph+" "," ");out.push(g)}}
+ for(const g of SYNB.concat(SYN)){const ph=[...g].sort((a,b)=>b.length-a.length).find(p=>q.includes(" "+p+" "));if(ph){q=q.replace(" "+ph+" "," ");out.push(g)}}
  for(const w of q.split(" ").filter(Boolean))out.push(w);return out}
 // synonym groups match at word starts ("scent" must not hit "fluorescent"); typed words match anywhere (codes, Chinese)
-const matchQ=(a,T)=>T.every(t=>typeof t==="string"?a.q.includes(t):t.some(w=>a.q.includes(" "+w)));                   // array of albums loaded so far
+const matchQ=(a,T)=>T.every(t=>typeof t==="string"?a.q.includes(t):t.c?t.some(w=>a.qs.includes(" "+w)||(/[\u3400-\u9fff]/.test(w)&&a.q.includes(w))):t.some(w=>a.q.includes(" "+w)));                   // array of albums loaded so far
 function toast(m){const d=document.createElement("div");d.className="toast";d.textContent=m;document.body.append(d);setTimeout(()=>d.remove(),2000)}
 // ---------- data ----------
 function addRow(r){const si=r[0];r=r.slice(1);const s=S.stores[si],key=s.id+"/"+r[0];if(ALB.has(key))return;
  const catNames=r[4].map(c=>s.cats[c]?s.cats[c][0]:""),catEn=r[4].map(c=>s.cats[c]?(s.cats[c][2]||s.cats[c][0]):""),cols=(r[13]||[]).map(i=>S.colors[i]);
  const a={si,sid:s.id,id:r[0],title:r[1],cover:r[2],count:r[3],cats:r[4],catNames,catEn,code:r[5],size:r[6],price:r[7],t:r[8],b:r[9],ty:r[10],gi:r[11],group:GROUPS[r[11]],key,
-  en:r[12]||"",colors:r[13]||[],fit:r[14]||0,sc:r[15]||0,lit:r[16]||"",usd:r[18]||"",yp:r[19]||"",ext:!!r[17],dg:r[20]||0,qv:r[21]||0,bl:!!s.bl,brand:r[9]>=0?S.brands[r[9]]:"",url:r[17]||`${s.base}/albums/${r[0]}?uid=1`,
+  en:r[12]||"",colors:r[13]||[],fit:r[14]||0,sc:r[15]||0,lit:r[16]||"",usd:r[18]||"",yp:r[19]||"",ext:!!r[17],dg:r[20]||0,qv:r[21]||0,gd:r[22]||"",mat:r[23]||[],model:r[24]||"",src:r[25]||"",bl:!!s.bl,brand:r[9]>=0?S.brands[r[9]]:"",url:r[17]||`${s.base}/albums/${r[0]}?uid=1`,
   q:" "+fold(r[12]+" "+r[1]+" "+catNames.join(" ")+" "+catEn.join(" ")+" "+r[5]+" "+s.id+" "+s.name+" "+r[0]+" "+(r[9]>=0?S.brands[r[9]]+" "+(S.brandShort[r[9]]||""):"")+" "+(r[10]>=0?S.types[r[10]]:"")+" "+(GROUPS[r[11]]||"")+" "+subName(r[11],r[15])+" "+(r[16]||"")+" "+cols.join(" ")+" "+r[6])};
+ const gw={w:"women's women",k:"kids' kids",u:"unisex men women",m:"men"}[a.gd]||"",mats=a.mat.map(i=>(S.materials||[])[i]||"").join(" ");
+ a.qs=" "+fold([a.en,a.brand,a.b>=0?S.brandShort[a.b]||"":"",a.model,a.ty>=0?S.types[a.ty]:"",a.group,subName(a.gi,a.sc),cols.join(" "),gw,mats].join(" "))+" ";
+ a.q+=" "+fold([a.model,gw,mats,a.b>=0?(S.brandZh||[])[a.b]||"":""].join(" "))+" ";
  ALB.set(key,a);ALL.push(a);if(a.dg)(DG.get(a.dg)||DG.set(a.dg,[]).get(a.dg)).push(a)}
 const subName=(gi,sc)=>{const g=S.groups[gi];return g&&g.subs&&g.subs[sc]?g.subs[sc][0]:""};
 const shardsOf=gi=>S.groups[gi].files.flatMap(([B,n])=>Array.from({length:n},(_,c)=>`b${B}-g${gi}-${c}`));
@@ -198,7 +205,7 @@ async function loadShard(gi,n){if(LOADED.has(n))return;LOADED.add(n);
 const GDONE={};const groupLoaded=gi=>(GDONE[gi]||0)>=shardsOf(gi).length;
 let loadingAll=null;
 let GSEL="";  // selected style group index ("" = New arrivals / everything)
-function needAll(){return GSEL===""&&($("#q").value.trim()||$("#fSeller").value!==""||$("#fHist").checked||$("#fPrice").checked||$("#fThumb").checked||$("#fColor").value!==""||$("#fFit").checked||$("#fSort").value!=="new")}
+function needAll(){return GSEL===""&&($("#q").value.trim()||$("#fSeller").value!==""||$("#fHist").checked||$("#fPrice").checked||$("#fThumb").checked||$("#fColor").value!==""||$("#fGender").value!==""||$("#fFit").checked||$("#fSort").value!=="new")}
 async function ensure(){const list=[];if(GSEL===""&&!needAll())return;
  const want=GSEL===""?S.groups.map((_,i)=>i):[+GSEL];
  for(const i of want)for(const n of shardsOf(i))if(!LOADED.has(n))list.push([i,n]);
@@ -251,10 +258,10 @@ function fillSubs(){const el=$("#subChips");if(GSEL===""){el.classList.add("hidd
  el.innerHTML=`<div class="chip${SSEL===""?" on":""}" data-s="">All ${esc(g.name)}</div>`+subs.map(([x,i])=>`<div class="chip${SSEL===String(i)?" on":""}" data-s="${i}">${esc(x[0])}<span class="n">${x[1].toLocaleString()}</span></div>`).join("")}
 $("#subChips").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;SSEL=c.dataset.s;fillSubs();apply();ensure()};
 function syncChips(){$$("#storeChips .chip").forEach(c=>c.classList.toggle("on",c.dataset.g===GSEL));$("#storeBtn").textContent=(fSeller.value===""?"All stores":S.stores[fSeller.value].id)+" ▾";$("#brandBtn").textContent=$("#fBrandBtn").textContent=(BSEL===""?"All brands":S.brands[BSEL])+" ▾";$("#brandBtn").classList.toggle("on",BSEL!=="");
- const n=[fCat.value,BSEL!=="",$("#fThumb").checked,$("#fHist").checked,$("#fPrice").checked,$("#fColor").value,$("#fFit").checked,$("#fSort").value!=="new"].filter(Boolean).length;$("#fCount").textContent=n?n:""}
+ const n=[fCat.value,BSEL!=="",$("#fThumb").checked,$("#fHist").checked,$("#fPrice").checked,$("#fColor").value,$("#fGender").value,$("#fFit").checked,$("#fSort").value!=="new"].filter(Boolean).length;$("#fCount").textContent=n?n:""}
 let RES=[],shown=0;
-function apply(keepScroll){const raw=$("#q").value.trim(),m=raw.match(/albums\/(\d+)/),q=terms(m?m[1]:raw),col=$("#fColor").value,fit=$("#fFit").checked,si=fSeller.value,ci=fCat.value,th=$("#fThumb").checked,hi=$("#fHist").checked,pr=$("#fPrice").checked;
- const pass=ALL.filter(a=>vis(a)&&(BSEL===""||a.b==BSEL)&&(GSEL===""||a.gi==GSEL)&&(SSEL===""||GSEL===""||a.sc==SSEL)&&(si===""||a.si==si)&&(ci===""||a.cats.includes(+ci))&&(!th||a.t||SERVER)&&(!hi||HIST[a.key])&&(!pr||a.price)&&(col===""||a.colors.includes(+col))&&(!fit||a.fit)&&matchQ(a,q));
+function apply(keepScroll){const raw=$("#q").value.trim(),m=raw.match(/albums\/(\d+)/),q=terms(m?m[1]:raw),col=$("#fColor").value,gdr=$("#fGender").value,fit=$("#fFit").checked,si=fSeller.value,ci=fCat.value,th=$("#fThumb").checked,hi=$("#fHist").checked,pr=$("#fPrice").checked;
+ const pass=ALL.filter(a=>vis(a)&&(BSEL===""||a.b==BSEL)&&(GSEL===""||a.gi==GSEL)&&(SSEL===""||GSEL===""||a.sc==SSEL)&&(si===""||a.si==si)&&(ci===""||a.cats.includes(+ci))&&(!th||a.t||SERVER)&&(!hi||HIST[a.key])&&(!pr||a.price)&&(col===""||a.colors.includes(+col))&&(gdr===""||(gdr==="m"?!"wk".includes(a.gd||"x"):gdr==="w"?a.gd==="w"||a.gd==="u":a.gd===gdr))&&(!fit||a.fit)&&matchQ(a,q));
  // one card per product: duplicate groups collapse to their best visible version
  const rep=new Map();RES=[];for(const a of pass){if(!a.dg){RES.push(a);continue}const r=rep.get(a.dg);if(!r||better(a,r)<0)rep.set(a.dg,a)}RES.push(...rep.values());
  const nList=RES.reduce((n,a)=>n+(a.dg?versOf(a).length:1),0);
@@ -281,13 +288,13 @@ new IntersectionObserver(e=>{if(!e[0].isIntersecting)return;if(shown<RES.length)
 let tmr;$("#q").addEventListener("input",()=>{clearTimeout(tmr);tmr=setTimeout(()=>{apply();ensure()},250)});
 function changed(){fillCatsIfNeeded();apply();ensure()}
 let lastSi=null;function fillCatsIfNeeded(){if(lastSi!==fSeller.value){lastSi=fSeller.value;fillCats()}}
-fSeller.onchange=changed;for(const id of ["#fCat","#fSort","#fThumb","#fHist","#fPrice","#fColor","#fFit"])$(id).onchange=()=>{apply();ensure()};
+fSeller.onchange=changed;for(const id of ["#fCat","#fSort","#fThumb","#fHist","#fPrice","#fColor","#fGender","#fFit"])$(id).onchange=()=>{apply();ensure()};
 function pickGroup(g){GSEL=g;SSEL="";fillSubs();fCat.value="";apply();ensure();scrollTo(0,0);const c=$(`#storeChips .chip[data-g="${g}"]`);if(c)c.scrollIntoView({inline:"center",block:"nearest"})}
 $("#storeChips").onclick=e=>{const c=e.target.closest(".chip");if(c)pickGroup(c.dataset.g)};
 document.addEventListener("click",e=>{const t=e.target.closest(".tile");if(t)pickGroup(t.dataset.g)});
 $("#storeBtn").onclick=()=>$("#sFilter").classList.add("on");
 $("#fBtn").onclick=()=>$("#sFilter").classList.add("on");
-$("#fReset").onclick=()=>{GSEL="";SSEL="";BSEL="";fillSubs();fSeller.value="";fCat.value="";$("#fSort").value="new";$("#fColor").value="";for(const id of ["#fThumb","#fHist","#fPrice","#fFit"])$(id).checked=false;changed()};
+$("#fReset").onclick=()=>{GSEL="";SSEL="";BSEL="";fillSubs();fSeller.value="";fCat.value="";$("#fSort").value="new";$("#fColor").value="";$("#fGender").value="";for(const id of ["#fThumb","#fHist","#fPrice","#fFit"])$(id).checked=false;changed()};
 // ---------- sheets ----------
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ph],[data-add],[data-close]");if(!t)return;
  if(t.dataset.close!==undefined)return t.closest(".sheet").classList.remove("on");
@@ -300,11 +307,12 @@ function verList(a){const vs=versOf(a);if(vs.length<2)return "";vs.sort((x,y)=>(
 async function openPhotos(a){if(!a)return;const s=S.stores[a.si],h=HIST[a.key];const src=thumb(a);
  $("#pBody").innerHTML=`<h3 style="margin:4px 40px 4px 0">${esc(a.title)}</h3><div class="meta">${esc(a.en&&a.en!==a.title?a.en:"")}</div>
  ${verList(a)}
- <div class="prov">${a.brand?`<div><b>Brand:</b> ${esc(a.brand)}</div>`:""}<div><b>Style:</b> ${esc(a.group)}${subName(a.gi,a.sc)?" › "+esc(subName(a.gi,a.sc)):""}</div>
+ <div class="prov">${a.brand?`<div><b>Brand:</b> ${esc(a.brand)}${a.model?` · <b>Model:</b> ${esc(a.model)}`:""}</div>`:a.model?`<div><b>Model:</b> ${esc(a.model)}</div>`:""}<div><b>Style:</b> ${esc(a.group)}${subName(a.gi,a.sc)?" › "+esc(subName(a.gi,a.sc)):""}${a.src==="p"?` <span class="meta">(type read from the photo)</span>`:a.src==="c"?` <span class="meta">(type from the seller's category)</span>`:""}</div>
+ ${[a.gd?`<b>For:</b> ${{m:"men",w:"women",u:"unisex",k:"kids"}[a.gd]}`:"",a.colors.length?`<b>Color:</b> ${a.colors.map(i=>S.colors[i]).join(", ")}`:"",a.mat.length?`<b>Material:</b> ${a.mat.map(i=>(S.materials||[])[i]).join(", ")}`:"",a.size?`<b>Sizes:</b> ${esc(a.size)}${a.fit?" ✓ fits you":""}`:"",a.price?`<b>Price:</b> ¥${esc(a.price)}${a.usd?` (≈ $${esc(a.usd)})`:""}`:"",a.code?`<b>Code:</b> ${esc(a.code)}`:""].filter(Boolean).map(x=>`<div>${x}</div>`).join("")}
  <div><b>Seller:</b> <a href="${s.home||s.base+"/albums?uid=1"}" target="_blank" rel="noopener">${esc(sName(s))}</a> (${s.home?"Google Sheet product list":esc(s.id)+".x.yupoo.com"})${s.warn?` <span style="color:#b45309">⚠ ${esc(s.warn)}</span>`:""}</div>
  <div><b>Album title:</b> ${esc(a.title)}${a.lit?`<br><b>Translation:</b> ${esc(a.lit)}`:""}${a.en?`<br><b>English:</b> ${esc(a.en)}`:""}</div>
  <div><b>${a.ext?"Weidian item":"Album"}:</b> <a href="${a.url}" target="_blank" rel="noopener">${esc(a.url.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a>${a.ext?"":` · ${a.count||"?"} photos`}${s.id==="hzh890"?" · password ***REMOVED***":""}</div>
- ${a.yp?`<div><b>Yupoo album:</b> <a href="${a.yp}" target="_blank" rel="noopener">${esc(a.yp.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a></div>`:""}${a.price&&a.ext?`<div><b>Price:</b> ¥${esc(a.price)}${a.usd?` (≈ $${esc(a.usd)})`:""}</div>`:""}
+ ${a.yp?`<div><b>Yupoo album:</b> <a href="${a.yp}" target="_blank" rel="noopener">${esc(a.yp.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a></div>`:""}
  <div><b>Seller categories:</b> ${a.cats.length?a.cats.map(i=>s.cats[i]).filter(Boolean).map(c=>`<a href="${s.base}/categories/${c[3]}?uid=1" target="_blank" rel="noopener">${esc(cName(c))}</a>`).join(", "):"none"}</div></div>
  ${h?`<div class="info" style="margin:8px 0">★ ${h.map(x=>`${esc(x.contact)} ${fmtD(x.date)}${x.label?` “${esc(x.label)}”`:""}${x.order?` (${esc(x.order)})`:""}`).join("; ")}</div>`:""}
  <div class="row2" style="margin-top:8px"><button class="btn pri" data-add="${esc(a.key)}">+ Add to order</button><a class="btn" href="${a.url}" target="_blank" rel="noopener">${a.ext?"Open on Weidian":"Open on Yupoo"} ↗</a></div>
@@ -344,7 +352,7 @@ function csv(items){const cols=["group","sub","brand","label","title","en","sell
 function download(name,text){const b=new Blob(["\ufeff"+text],{type:"text/csv;charset=utf-8"});const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download=name;document.body.append(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
 const stockOn=()=>localStorage.getItem("yupooStock")!=="0";
 function renderCart(){const body=$("#cartBody");if(!CART.length){body.innerHTML='<div class="empty">Your cart is empty.<br>Tap “+ Order” on any album.</div>';return}
- const items=sortedCart(),n=items.reduce((k,c)=>k+c.qty,0),yuan=items.reduce((k,c)=>k+(c.price?(+String(c.price).replace(/[^\d.]/g,"")||0)*c.qty:0),0);
+ const items=sortedCart(),n=items.reduce((k,c)=>k+c.qty,0),yuan=items.reduce((k,c)=>k+(c.price?(parseFloat(String(c.price).replace(/^[^\d]*/,""))||0)*c.qty:0),0);
  let h=`<div class="group"><h3>Order list <span class="meta">${n} item${n>1?"s":""}${yuan?` · listed prices ¥${yuan}`:""}</span></h3>
  <label class="lab" style="margin:0"><input type="checkbox" id="stockLine" style="width:auto" ${stockOn()?"checked":""}> End with “please confirm everything is in stock before I pay”</label>`;
  let last=null;
@@ -394,7 +402,7 @@ function brandCounts(){const si=fSeller.value;
  if(GSEL!==""&&groupLoaded(+GSEL)&&(si!==""||SSEL!=="")){const m=new Map();for(const a of ALL)if(a.gi==GSEL&&vis(a)&&a.b>=0&&(si===""||a.si==si)&&(SSEL===""||a.sc==SSEL)){(m.get(a.b)||m.set(a.b,new Set()).get(a.b)).add(a.dg||a.key)}return [...m].map(([b,v])=>[b,v.size])}
  return S.brandIdx.map(e=>[e[0],GSEL===""?(SHOWBL?e[2]:e[1]):((e[3].find(x=>x[0]==GSEL)||[0,0,0])[SHOWBL?2:1])]).filter(x=>x[1])}
 function fillBrands(){const q=fold($("#bQ").value.trim());let L=brandCounts().sort((a,b)=>b[1]-a[1]);
- if(q)L=L.filter(([b])=>fold(S.brands[b]+" "+(S.brandShort[b]||"")).includes(q));
+ if(q)L=L.filter(([b])=>fold(S.brands[b]+" "+(S.brandShort[b]||"")+" "+((S.brandZh||[])[b]||"")).includes(q));
  $("#bInfo").textContent=`${L.length} brands`+(GSEL!==""?` in ${S.groups[GSEL].name}`:"")+" · sorted by number of products";
  $("#bList").innerHTML=`<div class="bi${BSEL===""?" on":""}" data-b=""><span>All brands</span></div>`+L.slice(0,300).map(([b,c])=>`<div class="bi${String(b)===String(BSEL)?" on":""}" data-b="${b}"><span>${esc(S.brands[b])}</span><span class="meta">${c.toLocaleString()}</span></div>`).join("")}
 function openBrands(){$("#bQ").value="";fillBrands();$("#sFilter").classList.remove("on");$("#sBrand").classList.add("on")}
