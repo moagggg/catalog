@@ -173,7 +173,7 @@ function toast(m){const d=document.createElement("div");d.className="toast";d.te
 function addRow(r){const si=r[0];r=r.slice(1);const s=S.stores[si],key=s.id+"/"+r[0];if(ALB.has(key))return;
  const catNames=r[4].map(c=>s.cats[c]?s.cats[c][0]:""),catEn=r[4].map(c=>s.cats[c]?(s.cats[c][2]||s.cats[c][0]):""),cols=(r[13]||[]).map(i=>S.colors[i]);
  const a={si,sid:s.id,id:r[0],title:r[1],cover:r[2],count:r[3],cats:r[4],catNames,catEn,code:r[5],size:r[6],price:r[7],t:r[8],b:r[9],ty:r[10],gi:r[11],group:GROUPS[r[11]],key,
-  en:r[12]||"",colors:r[13]||[],fit:r[14]||0,sc:r[15]||0,lit:r[16]||"",url:`${s.base}/albums/${r[0]}?uid=1`,
+  en:r[12]||"",colors:r[13]||[],fit:r[14]||0,sc:r[15]||0,lit:r[16]||"",usd:r[18]||"",yp:r[19]||"",ext:!!r[17],url:r[17]||`${s.base}/albums/${r[0]}?uid=1`,
   q:" "+fold(r[12]+" "+r[1]+" "+catNames.join(" ")+" "+catEn.join(" ")+" "+r[5]+" "+s.id+" "+s.name+" "+r[0]+" "+(r[9]>=0?S.brands[r[9]]:"")+" "+(r[10]>=0?S.types[r[10]]:"")+" "+(GROUPS[r[11]]||"")+" "+subName(r[11],r[15])+" "+(r[16]||"")+" "+cols.join(" ")+" "+r[6])};
  ALB.set(key,a);ALL.push(a)}
 const subName=(gi,sc)=>{const g=S.groups[gi];return g&&g.subs&&g.subs[sc]?g.subs[sc][0]:""};
@@ -247,8 +247,8 @@ function card(a){const s=S.stores[a.si],src=thumb(a),h=HIST[a.key];
  return `<div class="card${h?" hist":""}"><div class="th" data-ph="${esc(a.key)}">${src?`<img loading="lazy" decoding="async" src="${src}" alt="" onerror="this.remove()">`:esc(a.title.slice(0,40))}
  ${a.count?`<span class="cnt">${a.count} 📷</span>`:""}${h?`<span class="hb">★ ${esc(h[0].contact)} ${fmtD(h[0].date)}</span>`:""}</div>
  <div class="cb"><div class="t">${esc(a.en||a.title||"(untitled)")}</div>${a.en&&a.en!==a.title?`<div class="o">${esc(a.title)}</div>`:""}<div class="s">${esc(sName(s))} · ${esc(catLabel(a)||subName(a.gi,a.sc)||"—")}</div>
- <div class="tags">${a.code?`<span class="tag">#${esc(a.code)}</span>`:""}${a.size?`<span class="tag z${a.fit?" fit":""}">${a.fit?"✓ ":""}${esc(a.size)}</span>`:""}${a.price?`<span class="tag p">¥${esc(a.price)}</span>`:""}</div>
- <div class="acts"><button class="btn sm pri" data-add="${esc(a.key)}">+ Order</button><a class="btn sm" href="${a.url}" target="_blank" rel="noopener" aria-label="Open on Yupoo">↗</a></div></div></div>`}
+ <div class="tags">${a.code?`<span class="tag">#${esc(a.code)}</span>`:""}${a.size?`<span class="tag z${a.fit?" fit":""}">${a.fit?"✓ ":""}${esc(a.size)}</span>`:""}${a.price?`<span class="tag p">¥${esc(a.price)}${a.usd?` · $${esc(a.usd)}`:""}</span>`:""}</div>
+ <div class="acts"><button class="btn sm pri" data-add="${esc(a.key)}">+ Order</button><a class="btn sm" href="${a.url}" target="_blank" rel="noopener" aria-label="${a.ext?"Open on Weidian":"Open on Yupoo"}">↗</a></div></div></div>`}
 function more(n=40){const end=Math.min(RES.length,shown+n);window._shownKeys=RES.slice(0,end).map(a=>a.key);$("#grid").insertAdjacentHTML("beforeend",RES.slice(shown,end).map(card).join(""));shown=end;$("#moreBtn").classList.toggle("hidden",shown>=RES.length)}
 $("#moreBtn").onclick=()=>{if(shown<RES.length)more();else ensure()};
 new IntersectionObserver(e=>{if(!e[0].isIntersecting)return;if(shown<RES.length)more();else if(S&&GSEL!==""&&!groupLoaded(+GSEL))ensure()},{rootMargin:"800px"}).observe($("#moreBtn"));
@@ -272,10 +272,11 @@ async function openPhotos(a){if(!a)return;const s=S.stores[a.si],h=HIST[a.key];c
  <div class="prov"><div><b>Style:</b> ${esc(a.group)}${subName(a.gi,a.sc)?" › "+esc(subName(a.gi,a.sc)):""}</div>
  <div><b>Seller:</b> <a href="${s.base}/albums?uid=1" target="_blank" rel="noopener">${esc(sName(s))}</a> (${esc(s.id)}.x.yupoo.com)${s.warn?` <span style="color:#b45309">⚠ ${esc(s.warn)}</span>`:""}</div>
  <div><b>Album title:</b> ${esc(a.title)}${a.lit?`<br><b>Translation:</b> ${esc(a.lit)}`:""}${a.en?`<br><b>English:</b> ${esc(a.en)}`:""}</div>
- <div><b>Album:</b> <a href="${a.url}" target="_blank" rel="noopener">${esc(a.url.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a> · ${a.count||"?"} photos${s.id==="hzh890"?" · password ***REMOVED***":""}</div>
+ <div><b>${a.ext?"Weidian item":"Album"}:</b> <a href="${a.url}" target="_blank" rel="noopener">${esc(a.url.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a>${a.ext?"":` · ${a.count||"?"} photos`}${s.id==="hzh890"?" · password ***REMOVED***":""}</div>
+ ${a.yp?`<div><b>Yupoo album:</b> <a href="${a.yp}" target="_blank" rel="noopener">${esc(a.yp.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a></div>`:""}${a.price&&a.ext?`<div><b>Price:</b> ¥${esc(a.price)}${a.usd?` (≈ $${esc(a.usd)})`:""}</div>`:""}
  <div><b>Seller categories:</b> ${a.cats.length?a.cats.map(i=>s.cats[i]).filter(Boolean).map(c=>`<a href="${s.base}/categories/${c[3]}?uid=1" target="_blank" rel="noopener">${esc(cName(c))}</a>`).join(", "):"none"}</div></div>
  ${h?`<div class="info" style="margin:8px 0">★ ${h.map(x=>`${esc(x.contact)} ${fmtD(x.date)}${x.label?` “${esc(x.label)}”`:""}${x.order?` (${esc(x.order)})`:""}`).join("; ")}</div>`:""}
- <div class="row2" style="margin-top:8px"><button class="btn pri" data-add="${esc(a.key)}">+ Add to order</button><a class="btn" href="${a.url}" target="_blank" rel="noopener">Open on Yupoo ↗</a></div>
+ <div class="row2" style="margin-top:8px"><button class="btn pri" data-add="${esc(a.key)}">+ Add to order</button><a class="btn" href="${a.url}" target="_blank" rel="noopener">${a.ext?"Open on Weidian":"Open on Yupoo"} ↗</a></div>
  <div id="pDesc" class="meta" style="white-space:pre-wrap;margin-top:8px"></div><div class="gal" id="pGal">${src?`<img src="${src}" alt="">`:""}</div>
  ${SERVER?"":`<p class="meta">Yupoo only shows full photos on its own site. Tap “Open on Yupoo” to see the whole album.</p>`}`;
  $("#sPhotos").classList.add("on");
@@ -290,7 +291,7 @@ let adding=null;
 function openAdd(a){if(!a)return;adding=a;$("#aHead").textContent=`${a.title} · ${a.sid}`;$("#aLabel").value=autoLabel(a);$("#aContact").innerHTML=contactOpts(CONTACTS.includes(lastContact)?lastContact:"");$("#aGroup").innerHTML=groupOpts(a.group);
  $("#aSize").value=DEF[kind(a)];$("#aColor").value=a.colors&&a.colors.length===1?S.colors[a.colors[0]]:"";$("#aQty").value=1;$("#aNotes").value="";$("#sPhotos").classList.remove("on");$("#sAdd").classList.add("on")}
 $("#aSave").onclick=()=>{const a=adding;lastContact=$("#aContact").value;localStorage.setItem("yupooContact",lastContact);
- CART.push({key:a.key,seller:a.sid,sellerName:sName(S.stores[a.si]),en:a.en,sub:subName(a.gi,a.sc),sellerCat:catLabel(a),catUrl:(()=>{const s=S.stores[a.si],c=a.cats.map(i=>s.cats[i]).filter(Boolean).pop();return c?`${s.base}/categories/${c[3]}?uid=1`:""})(),id:a.id,title:a.title,code:a.code,price:a.price?"¥"+a.price:"",url:a.url,kind:kind(a),group:$("#aGroup").value,t:a.t,label:$("#aLabel").value.trim()||autoLabel(a),contact:lastContact,
+ CART.push({key:a.key,seller:a.sid,sellerName:sName(S.stores[a.si]),en:a.en,sub:subName(a.gi,a.sc),sellerCat:catLabel(a),catUrl:(()=>{const s=S.stores[a.si],c=a.cats.map(i=>s.cats[i]).filter(Boolean).pop();return c?`${s.base}/categories/${c[3]}?uid=1`:""})(),id:a.id,title:a.title,code:a.code,price:a.price?"¥"+a.price+(a.usd?` ($${a.usd})`:""):"",yupoo:a.yp,url:a.url,kind:kind(a),group:$("#aGroup").value,t:a.t,label:$("#aLabel").value.trim()||autoLabel(a),contact:lastContact,
   size:$("#aSize").value.trim(),color:$("#aColor").value.trim(),qty:Math.max(1,+$("#aQty").value||1),notes:$("#aNotes").value.trim(),added:new Date().toISOString()});
  saveCart();$("#sAdd").classList.remove("on");toast("Added to cart: "+CART[CART.length-1].label)};
 const gOf=c=>c.group||(c.group=ALB.get(c.key)?ALB.get(c.key).group:"Unsorted");
