@@ -236,7 +236,8 @@ let RES=[],shown=0;
 function apply(keepScroll){const raw=$("#q").value.trim(),m=raw.match(/albums\/(\d+)/),q=terms(m?m[1]:raw),col=$("#fColor").value,fit=$("#fFit").checked,si=fSeller.value,ci=fCat.value,th=$("#fThumb").checked,hi=$("#fHist").checked,pr=$("#fPrice").checked;
  RES=ALL.filter(a=>(GSEL===""||a.gi==GSEL)&&(SSEL===""||GSEL===""||a.sc==SSEL)&&(si===""||a.si==si)&&(ci===""||a.cats.includes(+ci))&&(!th||a.t||SERVER)&&(!hi||HIST[a.key])&&(!pr||a.price)&&(col===""||a.colors.includes(+col))&&(!fit||a.fit)&&matchQ(a,q));
  const so=$("#fSort").value;
- if(so==="new")RES.sort((a,b)=>b.id-a.id);else if(so==="old")RES.sort((a,b)=>a.id-b.id);else if(so==="title")RES.sort((a,b)=>a.title.localeCompare(b.title));else RES.sort((a,b)=>b.count-a.count);
+ const rk=a=>a.ext?2.63e8:a.id;   // sheet/weidian items have huge ids; rank them as "current" (Nov 2026) instead of newest-ever
+ if(so==="new")RES.sort((a,b)=>rk(b)-rk(a));else if(so==="old")RES.sort((a,b)=>rk(a)-rk(b));else if(so==="title")RES.sort((a,b)=>a.title.localeCompare(b.title));else RES.sort((a,b)=>b.count-a.count);
  const prev=window._shownKeys||[];const same=keepScroll&&prev.length&&prev.every((k,i)=>RES[i]&&RES[i].key===k);
  if(!same){const keep=keepScroll?Math.max(shown,40):40;shown=0;$("#grid").innerHTML="";more(keep)}else $("#moreBtn").classList.toggle("hidden",shown>=RES.length);
  const total=GSEL===""?S.groups.reduce((n,g)=>n+g.count,0):S.groups[GSEL].count;const loaded=GSEL===""?ALL.length:ALL.filter(a=>a.gi==GSEL).length;
