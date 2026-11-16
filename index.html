@@ -215,7 +215,8 @@ async function ensure(){const list=[];if(GSEL===""&&!needAll())return;
  for(const [i,c] of list){await loadShard(i,c);done++;$("#prog").style.width=(100*done/total)+"%";if(done%2===0||done===total)apply(true)}
  setTimeout(()=>$("#prog").style.width="0",400)}
 // ---------- helpers ----------
-function thumb(a){if(!a)return "";if(a.t)return `t/${a.sid}/${a.id}.webp`;
+let TBM={};const TP=(sid,id)=>`${TBM[sid]||""}t/${sid}/${id}.webp`;
+function thumb(a){if(!a)return "";if(a.t)return TP(a.sid,a.id);
  if(SERVER&&a.cover)return "/img?u="+encodeURIComponent(`https://photo.yupoo.com/${a.sid}/${a.cover}/small.jpg`);return ""}
 const GSHIRT=new Set(["Dress shirts","Polos","T-shirts","Long sleeves","Sweaters","Hoodies","Jackets & coats","Down & padded","Suits","Sets & tracksuits"]);
 let GROUPS=[];
@@ -238,7 +239,7 @@ $("#histRemove").onclick=()=>{if(confirm("Remove the order history from this dev
 const fSeller=$("#fSeller"),fCat=$("#fCat");
 function fillStores(){const cur=fSeller.value;fSeller.innerHTML=`<option value="">All stores</option>`+S.stores.map((s,i)=>s.bl&&!SHOWBL?"":`<option value="${i}">${esc(s.name)}</option>`).join("");if([...fSeller.options].some(o=>o.value===cur))fSeller.value=cur;
  $("#storeChips").innerHTML=`<div class="chip on" data-g="">✨ New</div>`+S.groups.map((g,i)=>g.countBL?`<div class="chip" data-g="${i}">${esc(g.name)}</div>`:"").join("")}
-function tiles(){return `<div class="tiles">`+S.groups.map((g,i)=>!CN(g)?"":`<div class="tile" data-g="${i}">${g.cover?`<img loading="lazy" src="t/${S.stores[g.cover[0]].id}/${g.cover[1]}.webp" alt="">`:""}<span><b>${esc(g.name)}</b><br>${CN(g).toLocaleString()}</span></div>`).join("")+`</div><div class="meta" style="padding:4px 12px 8px;font-weight:600">New arrivals in all stores</div>`}
+function tiles(){return `<div class="tiles">`+S.groups.map((g,i)=>!CN(g)?"":`<div class="tile" data-g="${i}">${g.cover?`<img loading="lazy" src="${TP(S.stores[g.cover[0]].id,g.cover[1])}" alt="">`:""}<span><b>${esc(g.name)}</b><br>${CN(g).toLocaleString()}</span></div>`).join("")+`</div><div class="meta" style="padding:4px 12px 8px;font-weight:600">New arrivals in all stores</div>`}
 function brandTiles(){const e=S.brandIdx.find(x=>x[0]==BSEL);if(!e)return "";
  return `<div class="meta" style="padding:8px 12px 0;font-weight:600">${esc(S.brands[BSEL])} by category</div><div class="tiles">`+e[3].filter(x=>x[SHOWBL?2:1]).map(([gi,c,cb])=>`<div class="tile" data-g="${gi}"><span><b>${esc(S.groups[gi].name)}</b><br>${(SHOWBL?cb:c).toLocaleString()}</span></div>`).join("")+`</div>`}
 const cName=c=>c[2]&&c[2]!==c[0]?`${c[2]} (${c[0]})`:c[0];
@@ -357,7 +358,7 @@ function renderCart(){const body=$("#cartBody");if(!CART.length){body.innerHTML=
  <label class="lab" style="margin:0"><input type="checkbox" id="stockLine" style="width:auto" ${stockOn()?"checked":""}> End with “please confirm everything is in stock before I pay”</label>`;
  let last=null;
  for(const c of items){const g=gOf(c);if(g!==last){h+=`<div style="margin-top:14px;font-weight:700;color:var(--acc)">${esc(g)}</div>`;last=g}
-  const src=c.t?`t/${c.seller}/${c.id}.webp`:thumb(ALB.get(c.key));
+  const src=c.t?TP(c.seller,c.id):thumb(ALB.get(c.key));
   h+=`<div class="item">${src?`<img src="${src}" alt="">`:`<div class="ph"></div>`}<div class="f"><input data-ed="${c.i}" data-f="label" value="${esc(c.label)}" aria-label="Label">
    <div class="s"><a href="${c.url}" target="_blank" rel="noopener">${esc(c.title)}</a> · ${esc(c.seller)}${c.code?" · #"+esc(c.code):""}${c.price?" · "+esc(c.price):""}</div>
    <div class="mini"><input data-ed="${c.i}" data-f="size" value="${esc(c.size)}" list="sizeList" placeholder="Size" aria-label="Size"><input data-ed="${c.i}" data-f="color" value="${esc(c.color)}" placeholder="Color" aria-label="Color">
@@ -390,7 +391,7 @@ function renderHist(){const has=!!HDATA;$("#histEmpty").classList.toggle("hidden
  $("#hList").innerHTML=HDATA.curated.filter(o=>!f||o.contact===f).sort((a,b)=>b.date.localeCompare(a.date)).map(o=>{
   const labels={};for(const l of HDATA.links)if(l.contact===o.contact)labels[l.seller+"/"+l.album]=l;
   const items=o.albums.map(k=>{const a=ALB.get(k),l=labels[k],[sid,id]=k.split("/"),st=S.stores.find(x=>x.id===sid),url=l?l.url:(st?`${st.base}/albums/${id}?uid=1`:"");
-   const src=a?thumb(a):(st?`t/${sid}/${id}.webp`:"");
+   const src=a?thumb(a):(st?TP(sid,id):"");
    return `<div class="item">${src?`<img src="${src}" alt="" onerror="this.style.visibility='hidden'">`:`<div class="ph"></div>`}<div class="f"><b>${esc(l&&l.label||(o.labels||{})[k]||"")}</b> <a href="${esc(url)}" target="_blank" rel="noopener">${esc(k)}</a><div class="s">${a?esc(a.title):""}</div></div>${a?`<button class="btn sm" data-add="${esc(k)}">+ Reorder</button>`:""}</div>`}).join("");
   return `<div class="group"><h3><span class="ct">${esc(o.contact)}</span>${fmtD(o.date)} · ${esc(o.title)}</h3><span class="status">${esc(o.status)}</span>${items}<div style="margin-top:8px">${o.notes.map(n=>`<div class="note">${esc(n)}</div>`).join("")}</div></div>`}).join("");
  $("#hNotes").innerHTML=HDATA.notes.filter(n=>!f||n.contact===f).map(n=>`<div class="note"><span class="ct">${esc(n.contact)}</span><span class="meta">${fmtD(n.dt)}</span><br>${esc(n.text).replace(/\n/g,"<br>")}</div>`).join("")}
@@ -414,7 +415,7 @@ function view(v){$$(".nav button").forEach(b=>b.classList.toggle("on",b.dataset.
 $$(".nav button").forEach(b=>b.onclick=()=>view(b.dataset.v));
 // ---------- init ----------
 (async function(){saveCart();
- S=await (await fetch("data/stores.json")).json();
+ S=await (await fetch("data/stores.json")).json();TBM=Object.fromEntries(S.stores.filter(x=>x.tb).map(x=>[x.id,x.tb]));
  GROUPS=S.groups.map(g=>g.name);$("#fColor").insertAdjacentHTML("beforeend",(S.colors||[]).map((c,i)=>`<option value="${i}">${c}</option>`).join(""));for(const r of S.recent)addRow(r);
  fillStores();fillCats();
  $("#builtInfo").textContent=`Catalog updated ${S.built}`;
