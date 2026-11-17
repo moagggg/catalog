@@ -75,7 +75,14 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 .hidden{display:none!important}
 .toast{position:fixed;left:50%;bottom:calc(var(--nav) + 16px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#1d1d1f;color:#fff;padding:10px 16px;border-radius:10px;z-index:99;font-size:14px;max-width:90vw}
 .card .o{font-size:11.5px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}.tag.fit{background:#e3f6ec;color:#0a7d5a;font-weight:600}
+#gv{position:fixed;inset:0;background:#000;z-index:60;display:none;flex-direction:column}#gv.on{display:flex}
+#gv .gvt{display:flex;align-items:center;gap:8px;padding:10px 12px;color:#fff;font-size:15px}#gv .gvt b{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:600}
+#gv .gvt button{background:#ffffff22;color:#fff;border:0;border-radius:8px;padding:8px 12px;font-size:14px}
+#gvS{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none}#gvS::-webkit-scrollbar{display:none}
+#gvS .gs{flex:0 0 100%;width:100%;height:100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center}
+#gvS img{max-width:100%;max-height:100%;object-fit:contain}#gvC{color:#fff;text-align:center;padding:8px 0 14px;font-size:14px}
 </style></head><body>
+<div id="gv" role="dialog" aria-label="Photos"><div class="gvt"><b id="gvT"></b><button id="gvInfo">Details</button><button id="gvX" aria-label="Close">✕</button></div><div id="gvS"></div><div id="gvC"></div></div>
 
 <div id="v-catalog">
  <div class="top">
@@ -216,6 +223,14 @@ async function ensure(){const list=[];if(GSEL===""&&!needAll())return;
  setTimeout(()=>$("#prog").style.width="0",400)}
 // ---------- helpers ----------
 let TBM={};const TP=(sid,id)=>`${TBM[sid]||""}t/${sid}/${id}.webp`;
+// ---------- per-item photo galleries (stores.json "gal" {store/id: n}; photos in the store's image shard g/<store>/<id>_<i>.webp) ----------
+let GAL={},gvA=null;const GP=(sid,id,i)=>`${TBM[sid]||""}g/${sid}/${id}_${i}.webp`;
+function gvLoad(){const S_=$("#gvS"),w=S_.clientWidth||1,i=Math.round(S_.scrollLeft/w),n=S_.children.length;$("#gvC").textContent=`${i+1} / ${n}`;
+ for(let j=Math.max(0,i-1);j<=Math.min(n-1,i+2);j++){const im=S_.children[j].firstChild;if(im&&!im.src&&im.dataset.src)im.src=im.dataset.src}}
+function openGallery(a,start=0){const n=GAL[a.key];if(!n)return openPhotos(a);gvA=a;$("#gvT").textContent=(a.en&&/\s/.test(a.en)?a.en:a.title)||a.en;
+ $("#gvS").innerHTML=Array.from({length:n},(_,i)=>`<div class="gs"><img data-src="${GP(a.sid,a.id,i)}" alt="Photo ${i+1} of ${n}" decoding="async" onerror="this.alt='photo unavailable'"></div>`).join("");
+ $("#gv").classList.add("on");document.body.style.overflow="hidden";const S_=$("#gvS");S_.scrollLeft=start*S_.clientWidth;gvLoad()}
+function closeGallery(){$("#gv").classList.remove("on");$("#gvS").innerHTML="";document.body.style.overflow=""}
 function thumb(a){if(!a)return "";if(a.t)return TP(a.sid,a.id);
  if(SERVER&&a.cover)return "/img?u="+encodeURIComponent(`https://photo.yupoo.com/${a.sid}/${a.cover}/small.jpg`);return ""}
 const GSHIRT=new Set(["Dress shirts","Polos","T-shirts","Long sleeves","Sweaters","Hoodies","Jackets & coats","Down & padded","Suits","Sets & tracksuits"]);
@@ -279,7 +294,7 @@ function apply(keepScroll){const raw=$("#q").value.trim(),m=raw.match(/albums\/(
  $("#emptyMsg").classList.toggle("hidden",bhome||!!RES.length||(loaded<total&&!home));$("#moreBtn").classList.toggle("hidden",bhome||(shown>=RES.length&&(loaded>=total||home)));syncChips()}
 function card(a){const s=S.stores[a.si],src=thumb(a),h=HIST[a.key],vs=versOf(a),ns=new Set(vs.map(v=>v.si)).size,mp=ns>1?minPrice(vs):0;
  return `<div class="card${h?" hist":""}"><div class="th" data-ph="${esc(a.key)}">${src?`<img loading="lazy" decoding="async" src="${src}" alt="" onerror="this.remove()">`:esc(a.title.slice(0,40))}
- ${a.count?`<span class="cnt">${a.count} 📷</span>`:""}${h?`<span class="hb">★ ${esc(h[0].contact)} ${fmtD(h[0].date)}</span>`:""}</div>
+ ${GAL[a.key]?`<span class="cnt">${GAL[a.key]} photos ▸</span>`:a.count?`<span class="cnt">${a.count} 📷</span>`:""}${h?`<span class="hb">★ ${esc(h[0].contact)} ${fmtD(h[0].date)}</span>`:""}</div>
  <div class="cb"><div class="t">${esc(a.en||a.title||"(untitled)")}</div>${a.en&&a.en!==a.title?`<div class="o">${esc(a.title)}</div>`:""}<div class="s">${esc(sName(s))} · ${esc(catLabel(a)||subName(a.gi,a.sc)||"—")}</div>
  <div class="tags">${a.brand?`<span class="tag br">${esc(a.brand)}</span>`:""}${ns>1?`<span class="tag ns" data-ph="${esc(a.key)}">${ns} sellers${mp?` · from ¥${mp}`:""}</span>`:""}${a.bl?`<span class="tag bl" title="${esc(s.warn||"")}">⚠ blacklist</span>`:""}${a.code?`<span class="tag">#${esc(a.code)}</span>`:""}${a.size?`<span class="tag z${a.fit?" fit":""}">${a.fit?"✓ ":""}${esc(a.size)}</span>`:""}${a.price?`<span class="tag p">¥${esc(a.price)}${a.usd?` · $${esc(a.usd)}`:""}</span>`:""}</div>
  <div class="acts"><button class="btn sm pri" data-add="${esc(a.key)}">+ Order</button><a class="btn sm" href="${a.url}" target="_blank" rel="noopener" aria-label="${a.ext?"Open on Weidian":"Open on Yupoo"}">↗</a></div></div></div>`}
@@ -299,7 +314,7 @@ $("#fReset").onclick=()=>{GSEL="";SSEL="";BSEL="";fillSubs();fSeller.value="";fC
 // ---------- sheets ----------
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ph],[data-add],[data-close]");if(!t)return;
  if(t.dataset.close!==undefined)return t.closest(".sheet").classList.remove("on");
- if(t.dataset.ph)openPhotos(ALB.get(t.dataset.ph));if(t.dataset.add)openAdd(ALB.get(t.dataset.add))});
+ if(t.dataset.ph){const a=ALB.get(t.dataset.ph);if(a&&GAL[a.key]&&t.classList.contains("th"))openGallery(a);else openPhotos(a)}if(t.dataset.add)openAdd(ALB.get(t.dataset.add))});
 $$(".sheet").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("on")}));
 function verList(a){const vs=versOf(a);if(vs.length<2)return "";vs.sort((x,y)=>(parseFloat(x.price)||1e9)-(parseFloat(y.price)||1e9));
  return `<div class="vers"><b>Sold by ${new Set(vs.map(v=>v.si)).size} sellers</b> <span class="meta">(same product, matched by photo)</span>`+vs.map(v=>{const st=S.stores[v.si];return `<div class="ver">${v===a?`<span class="meta" style="font-size:11px;text-align:center">this<br>photo</span>`:`<img loading="lazy" src="${thumb(v)}" alt="">`}
@@ -317,8 +332,9 @@ async function openPhotos(a){if(!a)return;const s=S.stores[a.si],h=HIST[a.key];c
  <div><b>Seller categories:</b> ${a.cats.length?a.cats.map(i=>s.cats[i]).filter(Boolean).map(c=>`<a href="${s.base}/categories/${c[3]}?uid=1" target="_blank" rel="noopener">${esc(cName(c))}</a>`).join(", "):"none"}</div></div>
  ${h?`<div class="info" style="margin:8px 0">★ ${h.map(x=>`${esc(x.contact)} ${fmtD(x.date)}${x.label?` “${esc(x.label)}”`:""}${x.order?` (${esc(x.order)})`:""}`).join("; ")}</div>`:""}
  <div class="row2" style="margin-top:8px"><button class="btn pri" data-add="${esc(a.key)}">+ Add to order</button><a class="btn" href="${a.url}" target="_blank" rel="noopener">${a.ext?"Open on Weidian":"Open on Yupoo"} ↗</a></div>
- <div id="pDesc" class="meta" style="white-space:pre-wrap;margin-top:8px"></div><div class="gal" id="pGal">${src?`<img src="${src}" alt="">`:""}</div>
- ${SERVER?"":`<p class="meta">Yupoo only shows full photos on its own site. Tap “Open on Yupoo” to see the whole album.</p>`}`;
+ <div id="pDesc" class="meta" style="white-space:pre-wrap;margin-top:8px"></div>${GAL[a.key]?`<button class="btn pri" style="margin-top:8px;width:100%" data-gal="${esc(a.key)}">View all ${GAL[a.key]} photos</button>`:""}<div class="gal" id="pGal">${src?`<img src="${src}" alt="">`:""}</div>
+ ${SERVER||GAL[a.key]?"":`<p class="meta">Yupoo only shows full photos on its own site. Tap “Open on Yupoo” to see the whole album.</p>`}`;
+ const gb=$("#pBody [data-gal]");if(gb)gb.onclick=()=>{$("#sPhotos").classList.remove("on");openGallery(a)};
  $("#sPhotos").classList.add("on");
  if(SERVER){try{const r=await (await fetch(`/album?seller=${encodeURIComponent(s.id)}&id=${a.id}`)).json();if(r.desc)$("#pDesc").textContent=r.desc;
   $("#pGal").innerHTML=r.photos.map(p=>`<img loading="lazy" src="/img?u=${encodeURIComponent(p.replace(/\/big\.(\w+)$/,"/medium.$1"))}">`).join("")}catch(e){}}}
@@ -415,7 +431,10 @@ function view(v){$$(".nav button").forEach(b=>b.classList.toggle("on",b.dataset.
 $$(".nav button").forEach(b=>b.onclick=()=>view(b.dataset.v));
 // ---------- init ----------
 (async function(){saveCart();
- S=await (await fetch("data/stores.json")).json();TBM=Object.fromEntries(S.stores.filter(x=>x.tb).map(x=>[x.id,x.tb]));
+ S=await (await fetch("data/stores.json")).json();TBM=Object.fromEntries(S.stores.filter(x=>x.tb).map(x=>[x.id,x.tb]));GAL=S.gal||{};
+ let gvT_;$("#gvS").addEventListener("scroll",()=>{clearTimeout(gvT_);gvT_=setTimeout(gvLoad,60)},{passive:true});$("#gvX").onclick=closeGallery;
+ $("#gvInfo").onclick=()=>{const a=gvA;closeGallery();openPhotos(a)};document.addEventListener("keydown",e=>{if(!$("#gv").classList.contains("on"))return;const S_=$("#gvS");
+  if(e.key==="Escape")closeGallery();if(e.key==="ArrowRight")S_.scrollBy({left:S_.clientWidth,behavior:"smooth"});if(e.key==="ArrowLeft")S_.scrollBy({left:-S_.clientWidth,behavior:"smooth"})});
  GROUPS=S.groups.map(g=>g.name);$("#fColor").insertAdjacentHTML("beforeend",(S.colors||[]).map((c,i)=>`<option value="${i}">${c}</option>`).join(""));for(const r of S.recent)addRow(r);
  fillStores();fillCats();
  $("#builtInfo").textContent=`Catalog updated ${S.built}`;
