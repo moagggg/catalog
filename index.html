@@ -241,10 +241,10 @@ async function loadShard(gi,n){if(LOADED.has(n))return;LOADED.add(n);
  let r;for(let k=0;k<4;k++){try{r=await fetch(`data/${n}.json`);if(r.ok||r.status===404)break}catch(e){r={ok:false,status:"network"}}await new Promise(z=>setTimeout(z,800*(k+1)))}if(!r.ok){LOADED.delete(n);throw new Error(n+" "+r.status)}for(const row of await r.json())addRow(row);GDONE[gi]=(GDONE[gi]||0)+1}
 const GDONE={};const groupLoaded=gi=>(GDONE[gi]||0)>=shardsOf(gi).length;
 let loadingAll=null;
-let GSEL="",PREF=false;  // selected style group index ("" = New arrivals / everything)
+let GSEL="",PREF=false,CSEL=false;   // CSEL: inside the Clothing parent (GSEL="" = All clothing, else one clothing category)  // selected style group index ("" = New arrivals / everything)
 function needAll(){return GSEL===""&&(PREF||$("#q").value.trim()||$("#fSeller").value!==""||$("#fHist").checked||$("#fPrice").checked||$("#fThumb").checked||$("#fColor").value!==""||$("#fGender").value!==""||$("#fFit").checked||$("#fSort").value!=="new")}
-async function ensure(){const list=[];if(GSEL===""&&!needAll())return;
- const want=GSEL===""?S.groups.map((_,i)=>i):[+GSEL];
+async function ensure(){const list=[];if(GSEL===""&&!CSEL&&!needAll())return;
+ const want=GSEL===""?(CSEL&&!needAll()?[...CL()]:S.groups.map((_,i)=>i)):[+GSEL];
  for(const i of want)for(const n of shardsOf(i))if(!LOADED.has(n))list.push([i,n]);
  if(!list.length)return;
  // all-store browsing without search: recent rows are enough to start, keep loading in background
@@ -283,8 +283,8 @@ $("#histRemove").onclick=()=>{if(confirm("Remove the order history from this dev
 // ---------- filters ----------
 const fSeller=$("#fSeller"),fCat=$("#fCat");
 function fillStores(){const cur=fSeller.value;fSeller.innerHTML=`<option value="">All stores</option>`+S.stores.map((s,i)=>s.bl&&!SHOWBL?"":`<option value="${i}">${esc(s.name)}</option>`).join("");if([...fSeller.options].some(o=>o.value===cur))fSeller.value=cur;
- $("#storeChips").innerHTML=`<div class="chip on" data-g="">✨ New</div>`+S.groups.map((g,i)=>g.countBL?`<div class="chip" data-g="${i}">${esc(g.name)}</div>`:"").join("")}
-function tiles(){return `<div class="tiles">`+menuOrder().map(i=>[S.groups[i],i]).map(([g,i])=>!CN(g)?"":`<div class="tile" data-g="${i}">${g.cover?`<img loading="lazy" src="${TP(S.stores[g.cover[0]].id,g.cover[1])}" alt="">`:""}<span><b>${esc(g.name)}</b><br>${CN(g).toLocaleString()}</span></div>`).join("")+`</div><div class="meta" style="padding:4px 12px 8px;font-weight:600">New arrivals in all stores</div>`}
+ $("#storeChips").innerHTML=`<div class="chip on" data-g="">✨ New</div>`+topOrder().map(i=>i==="C"?`<div class="chip" data-g="C">Clothing</div>`:S.groups[i].countBL?`<div class="chip" data-g="${i}">${esc(S.groups[i].name)}</div>`:"").join("")}
+function tiles(){const hc=S.groups.find(g=>g.name==="Hoodies")||S.groups[[...CL()][0]];return `<div class="tiles">`+topOrder().map(i=>i==="C"?[{name:"Clothing",cover:hc&&hc.cover,count:clothCount(),countBL:clothCount()},"C"]:[S.groups[i],i]).map(([g,i])=>!CN(g)?"":`<div class="tile" data-g="${i}">${g.cover?`<img loading="lazy" src="${TP(S.stores[g.cover[0]].id,g.cover[1])}" alt="">`:""}<span><b>${esc(g.name)}</b><br>${CN(g).toLocaleString()}</span></div>`).join("")+`</div><div class="meta" style="padding:4px 12px 8px;font-weight:600">New arrivals in all stores</div>`}
 function brandTiles(){const e=S.brandIdx.find(x=>x[0]==BSEL);if(!e)return "";
  return `<div class="meta" style="padding:8px 12px 0;font-weight:600">${esc(S.brands[BSEL])} by category</div><div class="tiles">`+e[3].filter(x=>x[SHOWBL?2:1]).map(([gi,c,cb])=>`<div class="tile" data-g="${gi}"><span><b>${esc(S.groups[gi].name)}</b><br>${(SHOWBL?cb:c).toLocaleString()}</span></div>`).join("")+`</div>`}
 const cName=c=>c[2]&&c[2]!==c[0]?`${c[2]} (${c[0]})`:c[0];
@@ -296,24 +296,25 @@ function fillCats(){const si=fSeller.value;if(si===""){fCat.innerHTML='<option v
  s.cats.forEach((c,i)=>{if(c[1]==null||!s.cats[c[1]]){h+=`<option value="${i}">${esc(cName(c))}</option>`;for(const [k,j] of kids(i))h+=`<option value="${j}">&nbsp;&nbsp;└ ${esc(cName(k))}</option>`}});
  fCat.innerHTML=h}
 let SSEL="",MSEL="";
-function fillMats(){const el=$("#matChips");if(GSEL===""||!S.materials){el.classList.add("hidden");el.innerHTML="";return}
- const c=new Map();for(const a of ALL)if(a.gi==GSEL&&vis(a)&&(SSEL===""||a.sc==SSEL)&&(BSEL===""||a.b==BSEL))for(const m of a.mat)c.set(m,(c.get(m)||0)+1);
+function fillMats(){const el=$("#matChips");if((GSEL===""&&!CSEL)||!S.materials){el.classList.add("hidden");el.innerHTML="";return}
+ const c=new Map();for(const a of ALL)if((GSEL!==""?a.gi==GSEL:CL().has(a.gi))&&vis(a)&&(SSEL===""||GSEL===""||a.sc==SSEL)&&(BSEL===""||a.b==BSEL))for(const m of a.mat)c.set(m,(c.get(m)||0)+1);
  const L=[...c].filter(x=>x[1]>=10||String(x[0])===MSEL).sort((a,b)=>b[1]-a[1]).slice(0,8);
  if(!L.length){el.classList.add("hidden");el.innerHTML="";return}el.classList.remove("hidden");
  el.innerHTML=`<div class="chip${MSEL===""?" on":""}" data-m="">Any material</div>`+L.map(([m,n])=>`<div class="chip${String(m)===MSEL?" on":""}" data-m="${m}">${esc(S.materials[m].replace(/^./,x=>x.toUpperCase()))}<span class="n">${n.toLocaleString()}</span></div>`).join("")}
 function subCounts(){const g=S.groups[GSEL];const si=fSeller.value;
  if((BSEL===""&&si==="")||!groupLoaded(+GSEL))return g.subs.map(x=>SHOWBL?x[2]:x[1]);
  const c=g.subs.map(()=>new Set());for(const a of ALL)if(a.gi==GSEL&&vis(a)&&(BSEL===""||a.b==BSEL)&&(si===""||a.si==si))c[a.sc].add(a.dg||a.key);return c.map(x=>x.size)}
-function fillSubs(){const el=$("#subChips");if(GSEL===""){el.classList.add("hidden");el.innerHTML="";return}const g=S.groups[GSEL];const sc=subCounts();const subs=(g.subs||[]).map((x,i)=>[[x[0],sc[i]],i]).filter(([x])=>x[1]);
+function fillSubs(){const el=$("#subChips");if(GSEL===""&&CSEL){el.classList.remove("hidden");el.innerHTML=`<div class="chip on" data-cg="">All clothing</div>`+menuOrder().filter(i=>CL().has(i)&&CN(S.groups[i])).map(i=>`<div class="chip" data-cg="${i}">${esc(S.groups[i].name)}<span class="n">${CN(S.groups[i]).toLocaleString()}</span></div>`).join("");return}
+ if(GSEL===""){el.classList.add("hidden");el.innerHTML="";return}const g=S.groups[GSEL];const sc=subCounts();const subs=(g.subs||[]).map((x,i)=>[[x[0],sc[i]],i]).filter(([x])=>x[1]);
  if(subs.length<2){el.classList.add("hidden");el.innerHTML="";return}el.classList.remove("hidden");
- el.innerHTML=`<div class="chip${SSEL===""?" on":""}" data-s="">All ${esc(g.name)}</div>`+subs.map(([x,i])=>`<div class="chip${SSEL===String(i)?" on":""}" data-s="${i}">${esc(x[0])}<span class="n">${x[1].toLocaleString()}</span></div>`).join("")}
+ el.innerHTML=(CSEL?`<div class="chip" data-cg="">‹ Clothing</div>`:"")+`<div class="chip${SSEL===""?" on":""}" data-s="">All ${esc(g.name)}</div>`+subs.map(([x,i])=>`<div class="chip${SSEL===String(i)?" on":""}" data-s="${i}">${esc(x[0])}<span class="n">${x[1].toLocaleString()}</span></div>`).join("")}
 $("#matChips").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;MSEL=c.dataset.m;apply();ensure()};
-$("#subChips").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;SSEL=c.dataset.s;fillSubs();apply();ensure()};
-function syncChips(){$$("#storeChips .chip").forEach(c=>c.classList.toggle("on",c.dataset.g===GSEL));$("#storeBtn").textContent=(fSeller.value===""?"All stores":S.stores[fSeller.value].id)+" ▾";$("#brandBtn").textContent=$("#fBrandBtn").textContent=(BSEL===""?"All brands":S.brands[BSEL])+" ▾";$("#brandBtn").classList.toggle("on",BSEL!=="");
+$("#subChips").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;if(c.dataset.cg!==undefined)return c.dataset.cg===""?pickClothing():pickGroup(c.dataset.cg);SSEL=c.dataset.s;fillSubs();apply();ensure()};
+function syncChips(){$$("#storeChips .chip").forEach(c=>c.classList.toggle("on",c.dataset.g==="C"?CSEL:!CSEL&&c.dataset.g===GSEL));$("#storeBtn").textContent=(fSeller.value===""?"All stores":S.stores[fSeller.value].id)+" ▾";$("#brandBtn").textContent=$("#fBrandBtn").textContent=(BSEL===""?"All brands":S.brands[BSEL])+" ▾";$("#brandBtn").classList.toggle("on",BSEL!=="");
  const n=[fCat.value,BSEL!=="",$("#fThumb").checked,$("#fHist").checked,$("#fPrice").checked,$("#fColor").value,$("#fGender").value,$("#fFit").checked,$("#fSort").value!=="new"].filter(Boolean).length;$("#fCount").textContent=n?n:""}
 let RES=[],shown=0;
 function apply(keepScroll){fillMats();const raw=$("#q").value.trim(),m=raw.match(/albums\/(\d+)/),q=terms(m?m[1]:raw),col=$("#fColor").value,gdr=$("#fGender").value,fit=$("#fFit").checked,si=fSeller.value,ci=fCat.value,th=$("#fThumb").checked,hi=$("#fHist").checked,pr=$("#fPrice").checked;
- const pass=ALL.filter(a=>vis(a)&&(BSEL===""||a.b==BSEL)&&(GSEL===""||a.gi==GSEL)&&(SSEL===""||GSEL===""||a.sc==SSEL)&&(MSEL===""||GSEL===""||a.mat.includes(+MSEL))&&(!PREF||a.pf||versOf(a).some(v=>v.pf))&&(si===""||a.si==si)&&(ci===""||a.cats.includes(+ci))&&(!th||a.t||SERVER)&&(!hi||HIST[a.key])&&(!pr||a.price)&&(col===""||a.colors.includes(+col))&&(gdr===""||(gdr==="m"?!"wk".includes(a.gd||"x"):gdr==="w"?a.gd==="w"||a.gd==="u":a.gd===gdr))&&(!fit||a.fit)&&matchQ(a,q));
+ const pass=ALL.filter(a=>vis(a)&&(BSEL===""||a.b==BSEL)&&(GSEL===""||a.gi==GSEL)&&(GSEL!==""||!CSEL||CL().has(a.gi))&&(SSEL===""||GSEL===""||a.sc==SSEL)&&(MSEL===""||(GSEL===""&&!CSEL)||a.mat.includes(+MSEL))&&(!PREF||a.pf||versOf(a).some(v=>v.pf))&&(si===""||a.si==si)&&(ci===""||a.cats.includes(+ci))&&(!th||a.t||SERVER)&&(!hi||HIST[a.key])&&(!pr||a.price)&&(col===""||a.colors.includes(+col))&&(gdr===""||(gdr==="m"?!"wk".includes(a.gd||"x"):gdr==="w"?a.gd==="w"||a.gd==="u":a.gd===gdr))&&(!fit||a.fit)&&matchQ(a,q));
  // one card per product: duplicate groups collapse to their best visible version
  const rep=new Map();RES=[];for(const a of pass){if(!a.dg){RES.push(a);continue}const r=rep.get(a.dg);if(!r||better(a,r)<0)rep.set(a.dg,a)}RES.push(...rep.values());
  const nList=RES.reduce((n,a)=>n+(a.dg?versOf(a).length:1),0);
@@ -326,11 +327,11 @@ function boostPref(L){const P=[],O=[];L.forEach((a,i)=>(a.pf||(a.dg&&versOf(a).s
  if(so==="new"){RES.sort((a,b)=>rk(b)-rk(a));if(!PREF&&(GSEL!==""||q.length))RES=boostPref(RES)}else if(so==="old")RES.sort((a,b)=>rk(a)-rk(b));else if(so==="title")RES.sort((a,b)=>a.title.localeCompare(b.title));else RES.sort((a,b)=>b.count-a.count);
  const prev=window._shownKeys||[];const same=keepScroll&&prev.length&&prev.every((k,i)=>RES[i]&&RES[i].key===k);
  if(!same){const keep=keepScroll?Math.max(shown,40):40;shown=0;$("#grid").innerHTML="";more(keep)}else $("#moreBtn").classList.toggle("hidden",shown>=RES.length);
- const LT=g=>SHOWBL?g.listingsBL:g.listings;const total=GSEL===""?S.groups.reduce((n,g)=>n+g.listingsBL,0):S.groups[GSEL].listingsBL;const loaded=GSEL===""?ALL.length:ALL.filter(a=>a.gi==GSEL).length;
- const bhome=GSEL===""&&BSEL!==""&&!q.length&&si==="";const home=!bhome&&!PREF&&GSEL===""&&BSEL===""&&!q.length&&si===""&&!th&&!hi&&!pr&&col===""&&!fit&&so==="new";$("#tilesWrap").innerHTML=home?tiles():bhome?brandTiles():"";
+ const LT=g=>SHOWBL?g.listingsBL:g.listings;const _cl=GSEL===""&&CSEL?CL():null;const total=_cl?[..._cl].reduce((n,i)=>n+S.groups[i].listingsBL,0):GSEL===""?S.groups.reduce((n,g)=>n+g.listingsBL,0):S.groups[GSEL].listingsBL;const loaded=_cl?ALL.filter(a=>_cl.has(a.gi)).length:GSEL===""?ALL.length:ALL.filter(a=>a.gi==GSEL).length;
+ const bhome=GSEL===""&&!CSEL&&BSEL!==""&&!q.length&&si==="";const home=!bhome&&!PREF&&!CSEL&&GSEL===""&&BSEL===""&&!q.length&&si===""&&!th&&!hi&&!pr&&col===""&&!fit&&so==="new";$("#tilesWrap").innerHTML=home?tiles():bhome?brandTiles():"";
  if(bhome){RES=[];$("#grid").innerHTML="";shown=0}
  const tot=S.groups.reduce((n,g)=>n+CN(g),0),totL=S.groups.reduce((n,g)=>n+LT(g),0);
- $("#resInfo").textContent=bhome?`${S.brands[BSEL]}: pick a category`:home?`${tot.toLocaleString()} products · ${totL.toLocaleString()} listings`:(BSEL!==""?S.brands[BSEL]+" › ":"")+(GSEL===""?"":S.groups[GSEL].name+(SSEL!==""?" › "+subName(+GSEL,+SSEL):"")+": ")+`${RES.length.toLocaleString()} products`+(nList>RES.length?` (${nList.toLocaleString()} listings)`:"")+(si!==""?` in ${S.stores[si].id}`:"")+(loaded<total&&!bhome?` · loading ${Math.round(100*loaded/total)}%`:"");
+ $("#resInfo").textContent=bhome?`${S.brands[BSEL]}: pick a category`:home?`${tot.toLocaleString()} products · ${totL.toLocaleString()} listings`:(BSEL!==""?S.brands[BSEL]+" › ":"")+(GSEL===""?(CSEL?"Clothing: ":""):(CSEL?"Clothing › ":"")+S.groups[GSEL].name+(SSEL!==""?" › "+subName(+GSEL,+SSEL):"")+": ")+`${RES.length.toLocaleString()} products`+(nList>RES.length?` (${nList.toLocaleString()} listings)`:"")+(si!==""?` in ${S.stores[si].id}`:"")+(loaded<total&&!bhome?` · loading ${Math.round(100*loaded/total)}%`:"");
  $("#emptyMsg").classList.toggle("hidden",bhome||!!RES.length||(loaded<total&&!home));$("#moreBtn").classList.toggle("hidden",bhome||(shown>=RES.length&&(loaded>=total||home)));syncChips()}
 function card(a){const s=S.stores[a.si],src=thumb(a),h=HIST[a.key],vs=versOf(a),ns=new Set(vs.map(v=>v.si)).size,mp=ns>1?minPrice(vs):0;
  return `<div class="card${h?" hist":""}"><div class="th" data-ph="${esc(a.key)}">${src?`<img loading="lazy" decoding="async" src="${src}" alt="" onerror="this.remove()">`:esc(a.title.slice(0,40))}
@@ -346,16 +347,20 @@ $("#prefBtn").onclick=()=>{PREF=!PREF;$("#prefBtn").classList.toggle("on",PREF);
 
 // ---------- category menu (☰ drawer) ----------
 // sections are matched by category name; any category not listed (e.g. a new import) falls into "More", Unsorted stays last
-const MENU=[["Shoes",["Shoes","Slides & sandals"]],
+const MENU=[["Electronics",["Electronics"]],["Shoes",["Shoes","Slides & sandals"]],
  ["Clothing",["T-shirts","Polos","Dress shirts","Long sleeves","Sweaters","Hoodies","Jackets & coats","Down & padded","Suits","Pants","Jeans","Shorts","Sets & tracksuits","Underwear & socks"]],
  ["Women's",["Women's"]],
  ["Bags & accessories",["Bags","Wallets","Luggage","Belts","Hats & scarves","Glasses","Watches","Jewelry","Accessories","Perfume"]],
- ["Kids & baby",["Kids"]],["Toys & Squishies",["Toys","Squishies"]],["Electronics",["Electronics"]],["Home",["Home"]]];
+ ["Kids & baby",["Kids"]],["Toys & Squishies",["Toys","Squishies"]],["Home",["Home"]]];
 function menuSections(){const used=new Set(),out=[];const byName=new Map(S.groups.map((g,i)=>[g.name,i]));
  for(const [sec,names] of MENU){const ids=names.map(n=>byName.get(n)).filter(i=>i!==undefined);ids.forEach(i=>used.add(i));if(ids.length)out.push([sec,ids])}
  const un=byName.get("Unsorted"),rest=S.groups.map((_,i)=>i).filter(i=>!used.has(i)&&i!==un);
  if(rest.length)out.push(["More",rest]);if(un!==undefined)out.push(["Other",[un]]);return out}
 function menuOrder(){return menuSections().flatMap(x=>x[1])}
+let _CL=null;function CL(){return _CL||(_CL=new Set((menuSections().find(x=>x[0]==="Clothing")||["",[]])[1]))}
+function topOrder(){return menuSections().flatMap(([sec,ids])=>sec==="Clothing"?["C"]:ids)}   // home tiles / category chips: clothing collapsed into one entry
+const clothCount=()=>[...CL()].reduce((n,i)=>n+CN(S.groups[i]),0);
+function pickClothing(){pickGroup("");CSEL=true;fillSubs();apply();ensure();syncChips();const c=$('#storeChips .chip[data-g="C"]');if(c)c.scrollIntoView({inline:"center",block:"nearest"})}
 let DRW_OPEN=new Set();
 function drawMenu(){const q=fold($("#drwQ").value.trim()),el=$("#drwList");let h=`<div class="pref" data-pref="1">⭐ Preferred sellers<span class="n" style="margin-left:auto;font-weight:400">${PREF?"on":""}</span></div>`;let any=0;
  for(const [sec,ids] of menuSections()){const rows=ids.map(i=>[i,S.groups[i]]).filter(([i,g])=>CN(g)).map(([i,g])=>{
@@ -364,7 +369,7 @@ function drawMenu(){const q=fold($("#drwQ").value.trim()),el=$("#drwList");let h
    if(!hitCat&&!hitSub.length)return "";any=1;const open=DRW_OPEN.has(i)||(q&&hitSub.length&&!hitCat);const show=q&&!hitCat?hitSub:subs;
    return `<div class="cat${String(i)===String(GSEL)?" cur":""}"><div class="nm" data-mg="${i}">${esc(g.name)}<span class="n">${CN(g).toLocaleString()}</span></div>${subs.length>1?`<button class="ex" data-mx="${i}" aria-label="Show subcategories" aria-expanded="${open?"true":"false"}">${open?"▴":"▾"}</button>`:""}</div>`
     +(subs.length>1?`<div class="subs${open?" on":""}"><div class="sub" data-mg="${i}"><b>All ${esc(g.name)}</b></div>`+show.map(([j,n,c])=>`<div class="sub" data-mg="${i}" data-ms="${j}">${esc(n)}<span class="n">${c.toLocaleString()}</span></div>`).join("")+`</div>`:"")}).join("");
-  if(rows)h+=`<div class="sec">${esc(sec)}</div>`+rows}
+  if(rows)h+=`<div class="sec">${esc(sec)}</div>`+(sec==="Clothing"&&(!q||fold("clothing all clothing").includes(q))?`<div class="cat${CSEL&&GSEL===""?" cur":""}"><div class="nm" data-mc="1"><b>All clothing</b><span class="n">${clothCount().toLocaleString()}</span></div></div>`:"")+rows}
  el.innerHTML=h+(any?"":`<div class="none">No category matches “${esc($("#drwQ").value)}”.</div>`)}
 function openMenu(){drawMenu();$("#drw").classList.add("on");$("#drw").setAttribute("aria-hidden","false");history.pushState({drw:1},"");}
 function closeMenu(fromPop){if(!$("#drw").classList.contains("on"))return;$("#drw").classList.remove("on");$("#drw").setAttribute("aria-hidden","true");if(!fromPop&&history.state&&history.state.drw)history.back()}
@@ -372,6 +377,7 @@ $("#menuBtn").onclick=openMenu;$("#drwX").onclick=()=>closeMenu();
 addEventListener("popstate",()=>closeMenu(true));
 $("#drw").addEventListener("click",e=>{if(e.target.id==="drw")return closeMenu();
  const x=e.target.closest("[data-mx]");if(x){const i=+x.dataset.mx;DRW_OPEN.has(i)?DRW_OPEN.delete(i):DRW_OPEN.add(i);return drawMenu()}
+ if(e.target.closest("[data-mc]")){closeMenu();return pickClothing()}
  if(e.target.closest("[data-pref]")){closeMenu();PREF=true;$("#prefBtn").classList.add("on");BSEL="";return pickGroup("")}   // all preferred listings, every category
  const c=e.target.closest("[data-mg]");if(!c)return;closeMenu();pickGroup(c.dataset.mg);
  if(c.dataset.ms!==undefined){SSEL=c.dataset.ms;fillSubs();apply();ensure()}});
@@ -381,12 +387,12 @@ $("#drwQ").addEventListener("input",drawMenu);
 function changed(){fillCatsIfNeeded();apply();ensure()}
 let lastSi=null;function fillCatsIfNeeded(){if(lastSi!==fSeller.value){lastSi=fSeller.value;fillCats()}}
 fSeller.onchange=changed;for(const id of ["#fCat","#fSort","#fThumb","#fHist","#fPrice","#fColor","#fGender","#fFit"])$(id).onchange=()=>{apply();ensure()};
-function pickGroup(g){GSEL=g;SSEL="";MSEL="";fillSubs();fCat.value="";apply();ensure();scrollTo(0,0);const c=$(`#storeChips .chip[data-g="${g}"]`);if(c)c.scrollIntoView({inline:"center",block:"nearest"})}
-$("#storeChips").onclick=e=>{const c=e.target.closest(".chip");if(c)pickGroup(c.dataset.g)};
-document.addEventListener("click",e=>{const t=e.target.closest(".tile");if(t)pickGroup(t.dataset.g)});
+function pickGroup(g){CSEL=g!==""&&CL().has(+g);GSEL=g;SSEL="";MSEL="";fillSubs();fCat.value="";apply();ensure();scrollTo(0,0);const c=$(`#storeChips .chip[data-g="${g}"]`);if(c)c.scrollIntoView({inline:"center",block:"nearest"})}
+$("#storeChips").onclick=e=>{const c=e.target.closest(".chip");if(c)c.dataset.g==="C"?pickClothing():pickGroup(c.dataset.g)};
+document.addEventListener("click",e=>{const t=e.target.closest(".tile");if(t)t.dataset.g==="C"?pickClothing():pickGroup(t.dataset.g)});
 $("#storeBtn").onclick=()=>$("#sFilter").classList.add("on");
 $("#fBtn").onclick=()=>$("#sFilter").classList.add("on");
-$("#fReset").onclick=()=>{PREF=false;$("#prefBtn").classList.remove("on");GSEL="";SSEL="";MSEL="";BSEL="";fillSubs();fSeller.value="";fCat.value="";$("#fSort").value="new";$("#fColor").value="";$("#fGender").value="";for(const id of ["#fThumb","#fHist","#fPrice","#fFit"])$(id).checked=false;changed()};
+$("#fReset").onclick=()=>{PREF=false;CSEL=false;$("#prefBtn").classList.remove("on");GSEL="";SSEL="";MSEL="";BSEL="";fillSubs();fSeller.value="";fCat.value="";$("#fSort").value="new";$("#fColor").value="";$("#fGender").value="";for(const id of ["#fThumb","#fHist","#fPrice","#fFit"])$(id).checked=false;changed()};
 // ---------- sheets ----------
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ph],[data-add],[data-close]");if(!t)return;
  if(t.dataset.close!==undefined)return t.closest(".sheet").classList.remove("on");
