@@ -89,6 +89,7 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
   <div class="srow"><input id="q" type="search" placeholder="Search brand, code, or paste an album link" enterkeyhint="search"><button class="btn" id="fBtn" aria-label="Filters">⚙︎ <span id="fCount"></span></button></div>
   <div class="chips" id="storeChips"></div>
   <div class="chips sub hidden" id="subChips"></div>
+  <div class="chips sub hidden" id="matChips"></div>
  </div>
  <div class="prog" id="prog"></div>
  <div class="bar"><span class="meta" id="resInfo">Loading…</span><span class="meta hidden" id="modeInfo"></span><span style="display:flex;gap:6px"><button class="chip" id="brandBtn">All brands ▾</button><button class="chip" id="storeBtn">All stores ▾</button></span></div>
@@ -265,19 +266,25 @@ function fillCats(){const si=fSeller.value;if(si===""){fCat.innerHTML='<option v
  const kids=i=>s.cats.map((c,j)=>[c,j]).filter(([c])=>c[1]===i);
  s.cats.forEach((c,i)=>{if(c[1]==null||!s.cats[c[1]]){h+=`<option value="${i}">${esc(cName(c))}</option>`;for(const [k,j] of kids(i))h+=`<option value="${j}">&nbsp;&nbsp;└ ${esc(cName(k))}</option>`}});
  fCat.innerHTML=h}
-let SSEL="";
+let SSEL="",MSEL="";
+function fillMats(){const el=$("#matChips");if(GSEL===""||!S.materials){el.classList.add("hidden");el.innerHTML="";return}
+ const c=new Map();for(const a of ALL)if(a.gi==GSEL&&vis(a)&&(SSEL===""||a.sc==SSEL)&&(BSEL===""||a.b==BSEL))for(const m of a.mat)c.set(m,(c.get(m)||0)+1);
+ const L=[...c].filter(x=>x[1]>=10||String(x[0])===MSEL).sort((a,b)=>b[1]-a[1]).slice(0,8);
+ if(!L.length){el.classList.add("hidden");el.innerHTML="";return}el.classList.remove("hidden");
+ el.innerHTML=`<div class="chip${MSEL===""?" on":""}" data-m="">Any material</div>`+L.map(([m,n])=>`<div class="chip${String(m)===MSEL?" on":""}" data-m="${m}">${esc(S.materials[m].replace(/^./,x=>x.toUpperCase()))}<span class="n">${n.toLocaleString()}</span></div>`).join("")}
 function subCounts(){const g=S.groups[GSEL];const si=fSeller.value;
  if((BSEL===""&&si==="")||!groupLoaded(+GSEL))return g.subs.map(x=>SHOWBL?x[2]:x[1]);
  const c=g.subs.map(()=>new Set());for(const a of ALL)if(a.gi==GSEL&&vis(a)&&(BSEL===""||a.b==BSEL)&&(si===""||a.si==si))c[a.sc].add(a.dg||a.key);return c.map(x=>x.size)}
 function fillSubs(){const el=$("#subChips");if(GSEL===""){el.classList.add("hidden");el.innerHTML="";return}const g=S.groups[GSEL];const sc=subCounts();const subs=(g.subs||[]).map((x,i)=>[[x[0],sc[i]],i]).filter(([x])=>x[1]);
  if(subs.length<2){el.classList.add("hidden");el.innerHTML="";return}el.classList.remove("hidden");
  el.innerHTML=`<div class="chip${SSEL===""?" on":""}" data-s="">All ${esc(g.name)}</div>`+subs.map(([x,i])=>`<div class="chip${SSEL===String(i)?" on":""}" data-s="${i}">${esc(x[0])}<span class="n">${x[1].toLocaleString()}</span></div>`).join("")}
+$("#matChips").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;MSEL=c.dataset.m;apply();ensure()};
 $("#subChips").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;SSEL=c.dataset.s;fillSubs();apply();ensure()};
 function syncChips(){$$("#storeChips .chip").forEach(c=>c.classList.toggle("on",c.dataset.g===GSEL));$("#storeBtn").textContent=(fSeller.value===""?"All stores":S.stores[fSeller.value].id)+" ▾";$("#brandBtn").textContent=$("#fBrandBtn").textContent=(BSEL===""?"All brands":S.brands[BSEL])+" ▾";$("#brandBtn").classList.toggle("on",BSEL!=="");
  const n=[fCat.value,BSEL!=="",$("#fThumb").checked,$("#fHist").checked,$("#fPrice").checked,$("#fColor").value,$("#fGender").value,$("#fFit").checked,$("#fSort").value!=="new"].filter(Boolean).length;$("#fCount").textContent=n?n:""}
 let RES=[],shown=0;
-function apply(keepScroll){const raw=$("#q").value.trim(),m=raw.match(/albums\/(\d+)/),q=terms(m?m[1]:raw),col=$("#fColor").value,gdr=$("#fGender").value,fit=$("#fFit").checked,si=fSeller.value,ci=fCat.value,th=$("#fThumb").checked,hi=$("#fHist").checked,pr=$("#fPrice").checked;
- const pass=ALL.filter(a=>vis(a)&&(BSEL===""||a.b==BSEL)&&(GSEL===""||a.gi==GSEL)&&(SSEL===""||GSEL===""||a.sc==SSEL)&&(si===""||a.si==si)&&(ci===""||a.cats.includes(+ci))&&(!th||a.t||SERVER)&&(!hi||HIST[a.key])&&(!pr||a.price)&&(col===""||a.colors.includes(+col))&&(gdr===""||(gdr==="m"?!"wk".includes(a.gd||"x"):gdr==="w"?a.gd==="w"||a.gd==="u":a.gd===gdr))&&(!fit||a.fit)&&matchQ(a,q));
+function apply(keepScroll){fillMats();const raw=$("#q").value.trim(),m=raw.match(/albums\/(\d+)/),q=terms(m?m[1]:raw),col=$("#fColor").value,gdr=$("#fGender").value,fit=$("#fFit").checked,si=fSeller.value,ci=fCat.value,th=$("#fThumb").checked,hi=$("#fHist").checked,pr=$("#fPrice").checked;
+ const pass=ALL.filter(a=>vis(a)&&(BSEL===""||a.b==BSEL)&&(GSEL===""||a.gi==GSEL)&&(SSEL===""||GSEL===""||a.sc==SSEL)&&(MSEL===""||GSEL===""||a.mat.includes(+MSEL))&&(si===""||a.si==si)&&(ci===""||a.cats.includes(+ci))&&(!th||a.t||SERVER)&&(!hi||HIST[a.key])&&(!pr||a.price)&&(col===""||a.colors.includes(+col))&&(gdr===""||(gdr==="m"?!"wk".includes(a.gd||"x"):gdr==="w"?a.gd==="w"||a.gd==="u":a.gd===gdr))&&(!fit||a.fit)&&matchQ(a,q));
  // one card per product: duplicate groups collapse to their best visible version
  const rep=new Map();RES=[];for(const a of pass){if(!a.dg){RES.push(a);continue}const r=rep.get(a.dg);if(!r||better(a,r)<0)rep.set(a.dg,a)}RES.push(...rep.values());
  const nList=RES.reduce((n,a)=>n+(a.dg?versOf(a).length:1),0);
@@ -305,12 +312,12 @@ let tmr;$("#q").addEventListener("input",()=>{clearTimeout(tmr);tmr=setTimeout((
 function changed(){fillCatsIfNeeded();apply();ensure()}
 let lastSi=null;function fillCatsIfNeeded(){if(lastSi!==fSeller.value){lastSi=fSeller.value;fillCats()}}
 fSeller.onchange=changed;for(const id of ["#fCat","#fSort","#fThumb","#fHist","#fPrice","#fColor","#fGender","#fFit"])$(id).onchange=()=>{apply();ensure()};
-function pickGroup(g){GSEL=g;SSEL="";fillSubs();fCat.value="";apply();ensure();scrollTo(0,0);const c=$(`#storeChips .chip[data-g="${g}"]`);if(c)c.scrollIntoView({inline:"center",block:"nearest"})}
+function pickGroup(g){GSEL=g;SSEL="";MSEL="";fillSubs();fCat.value="";apply();ensure();scrollTo(0,0);const c=$(`#storeChips .chip[data-g="${g}"]`);if(c)c.scrollIntoView({inline:"center",block:"nearest"})}
 $("#storeChips").onclick=e=>{const c=e.target.closest(".chip");if(c)pickGroup(c.dataset.g)};
 document.addEventListener("click",e=>{const t=e.target.closest(".tile");if(t)pickGroup(t.dataset.g)});
 $("#storeBtn").onclick=()=>$("#sFilter").classList.add("on");
 $("#fBtn").onclick=()=>$("#sFilter").classList.add("on");
-$("#fReset").onclick=()=>{GSEL="";SSEL="";BSEL="";fillSubs();fSeller.value="";fCat.value="";$("#fSort").value="new";$("#fColor").value="";$("#fGender").value="";for(const id of ["#fThumb","#fHist","#fPrice","#fFit"])$(id).checked=false;changed()};
+$("#fReset").onclick=()=>{GSEL="";SSEL="";MSEL="";BSEL="";fillSubs();fSeller.value="";fCat.value="";$("#fSort").value="new";$("#fColor").value="";$("#fGender").value="";for(const id of ["#fThumb","#fHist","#fPrice","#fFit"])$(id).checked=false;changed()};
 // ---------- sheets ----------
 document.addEventListener("click",e=>{const t=e.target.closest("[data-ph],[data-add],[data-close]");if(!t)return;
  if(t.dataset.close!==undefined)return t.closest(".sheet").classList.remove("on");
