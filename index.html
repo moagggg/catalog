@@ -10,6 +10,29 @@ body{margin:0;font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"
 a{color:var(--acc)}
 .top{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);padding:8px 10px calc(8px) ;padding-top:calc(8px + env(safe-area-inset-top))}
 .srow{display:flex;gap:8px}
+.menuBtn{flex:none;width:44px;padding:0;font-size:20px}
+.drw{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s}
+.drw.on{opacity:1;pointer-events:auto}
+.drw .pane{position:absolute;top:0;bottom:0;left:0;width:min(86vw,340px);background:#fff;display:flex;flex-direction:column;transform:translateX(-102%);transition:transform .22s ease;box-shadow:2px 0 18px rgba(0,0,0,.18)}
+.drw.on .pane{transform:none}
+.drw .dh{display:flex;align-items:center;gap:8px;padding:10px 10px 8px;padding-top:calc(10px + env(safe-area-inset-top));border-bottom:1px solid var(--line)}
+.drw .dh b{font-size:17px;flex:1}
+.drw .dh input{width:100%}
+.drw .dsearch{padding:8px 10px;border-bottom:1px solid var(--line)}
+.drw .dlist{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.drw .sec{padding:14px 14px 4px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.drw .cat{display:flex;align-items:center;min-height:46px;border-bottom:1px solid #f0f0ee}
+.drw .cat .nm{flex:1;padding:0 14px;min-height:46px;display:flex;align-items:center;gap:8px;font-size:16px;cursor:pointer}
+.drw .cat .nm .n{color:var(--mute);font-size:13px;margin-left:auto}
+.drw .cat .ex{flex:none;width:46px;min-height:46px;border:0;border-left:1px solid #f0f0ee;background:none;font-size:15px;color:var(--mute);cursor:pointer}
+.drw .cat.cur .nm{color:var(--acc);font-weight:600}
+.drw .subs{display:none;background:#fafaf8;border-bottom:1px solid #f0f0ee}
+.drw .subs.on{display:block}
+.drw .sub{display:flex;align-items:center;min-height:40px;padding:0 14px 0 30px;font-size:15px;cursor:pointer}
+.drw .sub .n{margin-left:auto;color:var(--mute);font-size:13px}
+.drw .pref{display:flex;align-items:center;gap:8px;margin:10px 10px 0;padding:10px 12px;border-radius:10px;background:#fff7d6;color:#6b4a00;font-weight:600;cursor:pointer}
+.drw .none{padding:20px 14px;color:var(--mute)}
+
 input,select,textarea{font:inherit;font-size:16px;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
 textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 .btn{min-height:44px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:0 14px;font:inherit;font-size:15px;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;text-decoration:none;white-space:nowrap}
@@ -87,8 +110,12 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 <div id="gv" role="dialog" aria-label="Photos"><div class="gvt"><b id="gvT"></b><button id="gvInfo">Details</button><button id="gvX" aria-label="Close">✕</button></div><div id="gvS"></div><div id="gvC"></div></div>
 
 <div id="v-catalog">
- <div class="top">
-  <div class="srow"><input id="q" type="search" placeholder="Search brand, code, or paste an album link" enterkeyhint="search"><button class="btn" id="fBtn" aria-label="Filters">⚙︎ <span id="fCount"></span></button></div>
+ <div class="drw" id="drw" aria-hidden="true"><div class="pane" role="dialog" aria-label="Categories">
+ <div class="dh"><b>Categories</b><button class="btn sm" id="drwX" aria-label="Close">✕</button></div>
+ <div class="dsearch"><input id="drwQ" type="search" placeholder="Find a category…" autocomplete="off"></div>
+ <div class="dlist" id="drwList"></div></div></div>
+<div class="top">
+  <div class="srow"><button class="btn menuBtn" id="menuBtn" aria-label="Categories menu">☰</button><input id="q" type="search" placeholder="Search brand, code, or paste an album link" enterkeyhint="search"><button class="btn" id="fBtn" aria-label="Filters">⚙︎ <span id="fCount"></span></button></div>
   <div class="chips" id="storeChips"></div>
   <div class="chips sub hidden" id="subChips"></div>
   <div class="chips sub hidden" id="matChips"></div>
@@ -257,7 +284,7 @@ $("#histRemove").onclick=()=>{if(confirm("Remove the order history from this dev
 const fSeller=$("#fSeller"),fCat=$("#fCat");
 function fillStores(){const cur=fSeller.value;fSeller.innerHTML=`<option value="">All stores</option>`+S.stores.map((s,i)=>s.bl&&!SHOWBL?"":`<option value="${i}">${esc(s.name)}</option>`).join("");if([...fSeller.options].some(o=>o.value===cur))fSeller.value=cur;
  $("#storeChips").innerHTML=`<div class="chip on" data-g="">✨ New</div>`+S.groups.map((g,i)=>g.countBL?`<div class="chip" data-g="${i}">${esc(g.name)}</div>`:"").join("")}
-function tiles(){return `<div class="tiles">`+(S.tileOrder||S.groups.map((_,i)=>i)).map(i=>[S.groups[i],i]).map(([g,i])=>!CN(g)?"":`<div class="tile" data-g="${i}">${g.cover?`<img loading="lazy" src="${TP(S.stores[g.cover[0]].id,g.cover[1])}" alt="">`:""}<span><b>${esc(g.name)}</b><br>${CN(g).toLocaleString()}</span></div>`).join("")+`</div><div class="meta" style="padding:4px 12px 8px;font-weight:600">New arrivals in all stores</div>`}
+function tiles(){return `<div class="tiles">`+menuOrder().map(i=>[S.groups[i],i]).map(([g,i])=>!CN(g)?"":`<div class="tile" data-g="${i}">${g.cover?`<img loading="lazy" src="${TP(S.stores[g.cover[0]].id,g.cover[1])}" alt="">`:""}<span><b>${esc(g.name)}</b><br>${CN(g).toLocaleString()}</span></div>`).join("")+`</div><div class="meta" style="padding:4px 12px 8px;font-weight:600">New arrivals in all stores</div>`}
 function brandTiles(){const e=S.brandIdx.find(x=>x[0]==BSEL);if(!e)return "";
  return `<div class="meta" style="padding:8px 12px 0;font-weight:600">${esc(S.brands[BSEL])} by category</div><div class="tiles">`+e[3].filter(x=>x[SHOWBL?2:1]).map(([gi,c,cb])=>`<div class="tile" data-g="${gi}"><span><b>${esc(S.groups[gi].name)}</b><br>${(SHOWBL?cb:c).toLocaleString()}</span></div>`).join("")+`</div>`}
 const cName=c=>c[2]&&c[2]!==c[0]?`${c[2]} (${c[0]})`:c[0];
@@ -300,7 +327,7 @@ function boostPref(L){const P=[],O=[];L.forEach((a,i)=>(a.pf||(a.dg&&versOf(a).s
  const prev=window._shownKeys||[];const same=keepScroll&&prev.length&&prev.every((k,i)=>RES[i]&&RES[i].key===k);
  if(!same){const keep=keepScroll?Math.max(shown,40):40;shown=0;$("#grid").innerHTML="";more(keep)}else $("#moreBtn").classList.toggle("hidden",shown>=RES.length);
  const LT=g=>SHOWBL?g.listingsBL:g.listings;const total=GSEL===""?S.groups.reduce((n,g)=>n+g.listingsBL,0):S.groups[GSEL].listingsBL;const loaded=GSEL===""?ALL.length:ALL.filter(a=>a.gi==GSEL).length;
- const bhome=GSEL===""&&BSEL!==""&&!q.length&&si==="";const home=!bhome&&GSEL===""&&BSEL===""&&!q.length&&si===""&&!th&&!hi&&!pr&&col===""&&!fit&&so==="new";$("#tilesWrap").innerHTML=home?tiles():bhome?brandTiles():"";
+ const bhome=GSEL===""&&BSEL!==""&&!q.length&&si==="";const home=!bhome&&!PREF&&GSEL===""&&BSEL===""&&!q.length&&si===""&&!th&&!hi&&!pr&&col===""&&!fit&&so==="new";$("#tilesWrap").innerHTML=home?tiles():bhome?brandTiles():"";
  if(bhome){RES=[];$("#grid").innerHTML="";shown=0}
  const tot=S.groups.reduce((n,g)=>n+CN(g),0),totL=S.groups.reduce((n,g)=>n+LT(g),0);
  $("#resInfo").textContent=bhome?`${S.brands[BSEL]}: pick a category`:home?`${tot.toLocaleString()} products · ${totL.toLocaleString()} listings`:(BSEL!==""?S.brands[BSEL]+" › ":"")+(GSEL===""?"":S.groups[GSEL].name+(SSEL!==""?" › "+subName(+GSEL,+SSEL):"")+": ")+`${RES.length.toLocaleString()} products`+(nList>RES.length?` (${nList.toLocaleString()} listings)`:"")+(si!==""?` in ${S.stores[si].id}`:"")+(loaded<total&&!bhome?` · loading ${Math.round(100*loaded/total)}%`:"");
@@ -316,6 +343,41 @@ $("#moreBtn").onclick=()=>{if(shown<RES.length)more();else ensure()};
 new IntersectionObserver(e=>{if(!e[0].isIntersecting)return;if(shown<RES.length)more();else if(S&&GSEL!==""&&!groupLoaded(+GSEL))ensure()},{rootMargin:"800px"}).observe($("#moreBtn"));
 let tmr;$("#q").addEventListener("input",()=>{clearTimeout(tmr);tmr=setTimeout(()=>{apply();ensure()},250)});
 $("#prefBtn").onclick=()=>{PREF=!PREF;$("#prefBtn").classList.toggle("on",PREF);changed()};
+
+// ---------- category menu (☰ drawer) ----------
+// sections are matched by category name; any category not listed (e.g. a new import) falls into "More", Unsorted stays last
+const MENU=[["Shoes",["Shoes","Slides & sandals"]],
+ ["Clothing",["T-shirts","Polos","Dress shirts","Long sleeves","Sweaters","Hoodies","Jackets & coats","Down & padded","Suits","Pants","Jeans","Shorts","Sets & tracksuits","Underwear & socks"]],
+ ["Women's",["Women's"]],
+ ["Bags & accessories",["Bags","Wallets","Luggage","Belts","Hats & scarves","Glasses","Watches","Jewelry","Accessories","Perfume"]],
+ ["Kids & baby",["Kids"]],["Toys & Squishies",["Toys","Squishies"]],["Electronics",["Electronics"]],["Home",["Home"]]];
+function menuSections(){const used=new Set(),out=[];const byName=new Map(S.groups.map((g,i)=>[g.name,i]));
+ for(const [sec,names] of MENU){const ids=names.map(n=>byName.get(n)).filter(i=>i!==undefined);ids.forEach(i=>used.add(i));if(ids.length)out.push([sec,ids])}
+ const un=byName.get("Unsorted"),rest=S.groups.map((_,i)=>i).filter(i=>!used.has(i)&&i!==un);
+ if(rest.length)out.push(["More",rest]);if(un!==undefined)out.push(["Other",[un]]);return out}
+function menuOrder(){return menuSections().flatMap(x=>x[1])}
+let DRW_OPEN=new Set();
+function drawMenu(){const q=fold($("#drwQ").value.trim()),el=$("#drwList");let h=`<div class="pref" data-pref="1">⭐ Preferred sellers<span class="n" style="margin-left:auto;font-weight:400">${PREF?"on":""}</span></div>`;let any=0;
+ for(const [sec,ids] of menuSections()){const rows=ids.map(i=>[i,S.groups[i]]).filter(([i,g])=>CN(g)).map(([i,g])=>{
+   const subs=(g.subs||[]).map((x,j)=>[j,x[0],SHOWBL?x[2]:x[1]]).filter(x=>x[2]);
+   const hitCat=!q||fold(g.name+" "+sec).includes(q),hitSub=q?subs.filter(x=>fold(x[1]).includes(q)):[];
+   if(!hitCat&&!hitSub.length)return "";any=1;const open=DRW_OPEN.has(i)||(q&&hitSub.length&&!hitCat);const show=q&&!hitCat?hitSub:subs;
+   return `<div class="cat${String(i)===String(GSEL)?" cur":""}"><div class="nm" data-mg="${i}">${esc(g.name)}<span class="n">${CN(g).toLocaleString()}</span></div>${subs.length>1?`<button class="ex" data-mx="${i}" aria-label="Show subcategories" aria-expanded="${open?"true":"false"}">${open?"▴":"▾"}</button>`:""}</div>`
+    +(subs.length>1?`<div class="subs${open?" on":""}"><div class="sub" data-mg="${i}"><b>All ${esc(g.name)}</b></div>`+show.map(([j,n,c])=>`<div class="sub" data-mg="${i}" data-ms="${j}">${esc(n)}<span class="n">${c.toLocaleString()}</span></div>`).join("")+`</div>`:"")}).join("");
+  if(rows)h+=`<div class="sec">${esc(sec)}</div>`+rows}
+ el.innerHTML=h+(any?"":`<div class="none">No category matches “${esc($("#drwQ").value)}”.</div>`)}
+function openMenu(){drawMenu();$("#drw").classList.add("on");$("#drw").setAttribute("aria-hidden","false");history.pushState({drw:1},"");}
+function closeMenu(fromPop){if(!$("#drw").classList.contains("on"))return;$("#drw").classList.remove("on");$("#drw").setAttribute("aria-hidden","true");if(!fromPop&&history.state&&history.state.drw)history.back()}
+$("#menuBtn").onclick=openMenu;$("#drwX").onclick=()=>closeMenu();
+addEventListener("popstate",()=>closeMenu(true));
+$("#drw").addEventListener("click",e=>{if(e.target.id==="drw")return closeMenu();
+ const x=e.target.closest("[data-mx]");if(x){const i=+x.dataset.mx;DRW_OPEN.has(i)?DRW_OPEN.delete(i):DRW_OPEN.add(i);return drawMenu()}
+ if(e.target.closest("[data-pref]")){closeMenu();PREF=true;$("#prefBtn").classList.add("on");BSEL="";return pickGroup("")}   // all preferred listings, every category
+ const c=e.target.closest("[data-mg]");if(!c)return;closeMenu();pickGroup(c.dataset.mg);
+ if(c.dataset.ms!==undefined){SSEL=c.dataset.ms;fillSubs();apply();ensure()}});
+$("#drwQ").addEventListener("input",drawMenu);
+// swipe left on the drawer closes it
+{let x0=null;$("#drw").addEventListener("touchstart",e=>{x0=e.touches[0].clientX},{passive:true});$("#drw").addEventListener("touchend",e=>{if(x0!==null&&x0-e.changedTouches[0].clientX>60)closeMenu();x0=null},{passive:true})}
 function changed(){fillCatsIfNeeded();apply();ensure()}
 let lastSi=null;function fillCatsIfNeeded(){if(lastSi!==fSeller.value){lastSi=fSeller.value;fillCats()}}
 fSeller.onchange=changed;for(const id of ["#fCat","#fSort","#fThumb","#fHist","#fPrice","#fColor","#fGender","#fFit"])$(id).onchange=()=>{apply();ensure()};
