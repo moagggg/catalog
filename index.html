@@ -407,7 +407,7 @@ async function openPhotos(a){if(!a)return;const s=S.stores[a.si],h=HIST[a.key];c
  ${verList(a)}
  <div class="prov">${a.brand?`<div><b>Brand:</b> ${esc(a.brand)}${a.model?` · <b>Model:</b> ${esc(a.model)}`:""}</div>`:a.model?`<div><b>Model:</b> ${esc(a.model)}</div>`:""}<div><b>Style:</b> ${esc(a.group)}${subName(a.gi,a.sc)?" › "+esc(subName(a.gi,a.sc)):""}${a.src==="p"?` <span class="meta">(type read from the photo)</span>`:a.src==="c"?` <span class="meta">(type from the seller's category)</span>`:""}</div>
  ${[a.gd?`<b>For:</b> ${{m:"men",w:"women",u:"unisex",k:"kids"}[a.gd]}`:"",a.colors.length?`<b>Color:</b> ${a.colors.map(i=>S.colors[i]).join(", ")}`:"",a.mat.length?`<b>Material:</b> ${a.mat.map(i=>(S.materials||[])[i]).join(", ")}`:"",a.size?`<b>Sizes:</b> ${esc(a.size)}${a.fit?" ✓ fits you":""}`:"",a.price?`<b>Price:</b> ¥${esc(a.price)}${a.usd?` (≈ $${esc(a.usd)})`:""}`:"",a.code?`<b>Code:</b> ${esc(a.code)}`:""].filter(Boolean).map(x=>`<div>${x}</div>`).join("")}
- <div><b>Seller:</b> <a href="${s.home||s.base+"/albums?uid=1"}" target="_blank" rel="noopener">${esc(sName(s))}</a> (${s.home?"Google Sheet product list":esc(s.id)+".x.yupoo.com"})${s.pf?` <span class="tag pf">⭐ Preferred seller</span>`:""}${s.warn?` <span style="color:#b45309">⚠ ${esc(s.warn)}</span>`:""}</div>
+ <div><b>Seller:</b> <a href="${s.home||s.base+"/albums?uid=1"}" target="_blank" rel="noopener">${esc(sName(s))}</a> (${sellerKind(s)})${s.pf?` <span class="tag pf">⭐ Preferred seller</span>`:""}${s.warn?` <span style="color:#b45309">⚠ ${esc(s.warn)}</span>`:""}${s.wa?`</div><div><b>WhatsApp:</b> <a href="https://wa.me/${esc(s.wa)}" target="_blank" rel="noopener">+${fmtWa(s.wa)}</a>`:""}</div>
  <div><b>Album title:</b> ${esc(a.title)}${a.lit?`<br><b>Translation:</b> ${esc(a.lit)}`:""}${a.en?`<br><b>English:</b> ${esc(a.en)}`:""}</div>
  <div><b>${a.ext?"Weidian item":"Album"}:</b> <a href="${a.url}" target="_blank" rel="noopener">${esc(a.url.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a>${a.ext?"":` · ${a.count||"?"} photos`}${s.lk?" · 🔒 store asks for a password":""}</div>
  ${a.yp?`<div><b>Yupoo album:</b> <a href="${a.yp}" target="_blank" rel="noopener">${esc(a.yp.replace(/^https:\/\//,"").replace(/\?uid=1$/,""))}</a></div>`:""}
@@ -426,10 +426,10 @@ let lastContact=localStorage.getItem("yupooContact")||"";
 function saveCart(){localStorage.setItem("yupooCart",JSON.stringify(CART));const n=CART.reduce((n,c)=>n+(+c.qty||1),0);$("#cartN").textContent=n;$("#cartN").classList.toggle("hidden",!n)}
 $("#aContact").onchange=e=>{if(e.target.value==="__new"){const n=addContact(prompt("WhatsApp contact name"));$("#aContact").innerHTML=contactOpts(n||"")}};
 let adding=null;
-function openAdd(a){if(!a)return;adding=a;$("#aHead").textContent=`${a.title} · ${a.sid}`;$("#aLabel").value=autoLabel(a);$("#aContact").innerHTML=contactOpts(CONTACTS.includes(lastContact)?lastContact:"");$("#aGroup").innerHTML=groupOpts(a.group);
+function openAdd(a){if(!a)return;adding=a;$("#aHead").textContent=`${a.title} · ${a.sid}`;$("#aLabel").value=autoLabel(a);$("#aContact").innerHTML=contactOpts((()=>{const st=S.stores[a.si];if(st&&st.wa){const n=jennyContactName(st);addContact(n);return n}return CONTACTS.includes(lastContact)?lastContact:""})());$("#aGroup").innerHTML=groupOpts(a.group);
  $("#aSize").value=DEF[kind(a)];$("#aColor").value=a.colors&&a.colors.length===1?S.colors[a.colors[0]]:"";$("#aQty").value=1;$("#aNotes").value="";$("#sPhotos").classList.remove("on");$("#sAdd").classList.add("on")}
 $("#aSave").onclick=()=>{const a=adding;lastContact=$("#aContact").value;localStorage.setItem("yupooContact",lastContact);
- CART.push({key:a.key,brand:a.brand,seller:a.sid,sellerName:sName(S.stores[a.si]),en:a.en,sub:subName(a.gi,a.sc),sellerCat:catLabel(a),catUrl:(()=>{const s=S.stores[a.si],c=a.cats.map(i=>s.cats[i]).filter(Boolean).pop();return c?`${s.base}/categories/${c[3]}?uid=1`:""})(),id:a.id,title:a.title,code:a.code,price:a.price?"¥"+a.price+(a.usd?` ($${a.usd})`:""):"",yupoo:a.yp,url:a.url,kind:kind(a),group:$("#aGroup").value,t:a.t,label:$("#aLabel").value.trim()||autoLabel(a),contact:lastContact,
+ CART.push({key:a.key,brand:a.brand,seller:a.sid,sellerName:sName(S.stores[a.si]),en:a.en,sub:subName(a.gi,a.sc),sellerCat:catLabel(a),catUrl:(()=>{const s=S.stores[a.si],c=a.cats.map(i=>s.cats[i]).filter(Boolean).pop();return c?`${s.base}/categories/${c[3]}?uid=1`:""})(),id:a.id,title:a.title,code:a.code,price:a.price?"¥"+a.price+(a.usd?` ($${a.usd})`:""):"",yupoo:a.yp,url:a.url,kind:kind(a),group:$("#aGroup").value,t:a.t,label:$("#aLabel").value.trim()||autoLabel(a),contact:(()=>{const st=S.stores[a.si];if(st&&st.wa){const n=jennyContactName(st);addContact(n);return n}return lastContact})(),wa:((S.stores[a.si]||{}).wa||""),
   size:$("#aSize").value.trim(),color:$("#aColor").value.trim(),qty:Math.max(1,+$("#aQty").value||1),notes:$("#aNotes").value.trim(),added:new Date().toISOString()});
  saveCart();$("#sAdd").classList.remove("on");toast("Added to cart: "+CART[CART.length-1].label)};
 const gOf=c=>c.group||(c.group=ALB.get(c.key)?ALB.get(c.key).group:"Unsorted");
@@ -450,6 +450,19 @@ function csv(items){const cols=["group","sub","brand","label","title","en","sell
  return [cols.join(",")].concat(items.map(c=>cols.map(k=>`"${String(c[k]??"").replace(/"/g,'""')}"`).join(","))).join("\r\n")}
 function download(name,text){const b=new Blob(["\ufeff"+text],{type:"text/csv;charset=utf-8"});const u=URL.createObjectURL(b);const l=document.createElement("a");l.href=u;l.download=name;document.body.append(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}
 const stockOn=()=>localStorage.getItem("yupooStock")!=="0";
+
+function sellerKind(s){
+  const home=s.home||"", base=s.base||"";
+  if(/docs\.google\.com|spreadsheets/i.test(home)) return "Google Sheet product list";
+  if(/yupoo\.com/i.test(base)) return esc(s.id)+".x.yupoo.com";
+  if(home||base) return esc((home||base).replace(/^https?:\/\//,"").replace(/\/$/,""));
+  return esc(s.id);
+}
+function fmtWa(n){n=String(n||"").replace(/\D/g,""); if(n.startsWith("86")&&n.length>=13) return "86 "+n.slice(2,5)+" "+n.slice(5,9)+" "+n.slice(9); return n;}
+function storeWa(sid){const s=S&&S.stores.find(x=>x.id===sid);return s&&s.wa?String(s.wa).replace(/\D/g,""):""}
+function destWa(c){return (c.wa&&String(c.wa).replace(/\D/g,""))||storeWa(c.seller)||""}
+function jennyContactName(s){const n=(s&&s.name||"Jenny").replace(/\s*\(.*$/,"").trim();return n||"Jenny"}
+
 function renderCart(){const body=$("#cartBody");if(!CART.length){body.innerHTML='<div class="empty">Your cart is empty.<br>Tap “+ Order” on any album.</div>';return}
  const items=sortedCart(),n=items.reduce((k,c)=>k+c.qty,0),yuan=items.reduce((k,c)=>k+(c.price?(parseFloat(String(c.price).replace(/^[^\d]*/,""))||0)*c.qty:0),0);
  let h=`<div class="group"><h3>Order list <span class="meta">${n} item${n>1?"s":""}${yuan?` · listed prices ¥${yuan}`:""}</span></h3>
@@ -469,7 +482,8 @@ function renderCart(){const body=$("#cartBody");if(!CART.length){body.innerHTML=
  <div class="bigbar"><button class="btn pri" id="copyWA">📋 Copy for WhatsApp</button><button class="btn wa" id="shareWA" style="flex:none;width:110px">Share ↗</button></div>
  <div class="row2" style="margin-top:8px"><a class="btn" id="openWA" target="_blank" rel="noopener">Open in WhatsApp</a><button class="btn" id="csvAll">⬇ CSV</button></div>
  <div class="row2" style="margin-top:8px"><button class="btn" id="clearAll">Clear cart</button></div>
- <p class="meta">“Share” and “Open in WhatsApp” only open WhatsApp with the message filled in. You pick the chat and tap send yourself.</p></div>`;
+ <div id="waDests"></div>
+ <p class="meta" id="waHint">“Share” and “Open in WhatsApp” only open WhatsApp with the message filled in. You pick the chat and tap send yourself.</p></div>`;
  body.innerHTML=h;refreshTexts();
  $("#stockLine").onchange=e=>{localStorage.setItem("yupooStock",e.target.checked?"1":"0");refreshTexts()};
  $$("[data-ed]").forEach(el=>el.onchange=()=>{const c=CART[+el.dataset.ed];if(el.value==="__new"){const nn=addContact(prompt("WhatsApp contact name"));if(!nn)return renderCart();el.value=nn}
@@ -477,10 +491,30 @@ function renderCart(){const body=$("#cartBody");if(!CART.length){body.innerHTML=
  $$("[data-del]").forEach(b=>b.onclick=()=>{const c=CART[+b.dataset.del];CART.splice(+b.dataset.del,1);saveCart();renderCart();toast("Removed "+c.label)});
  $$("[data-q]").forEach(b=>b.onclick=()=>{const c=CART[+b.dataset.q];c.qty=Math.max(1,(+c.qty||1)+(+b.dataset.d));saveCart();renderCart()});
  $("#copyWA").onclick=async()=>{const t=txt();try{await navigator.clipboard.writeText(t)}catch(e){const ta=$("textarea[data-txt]");ta.closest("details").open=true;ta.removeAttribute("readonly");ta.select();document.execCommand("copy");ta.setAttribute("readonly","")}toast("Copied. Paste it into the WhatsApp chat")};
- $("#shareWA").onclick=async()=>{const t=txt();if(navigator.share){try{await navigator.share({text:t})}catch(e){}}else window.open("https://wa.me/?text="+encodeURIComponent(t),"_blank","noopener")};
+ $("#shareWA").onclick=async()=>{const items=sortedCart(),t=exportText(items,stockOn());if(navigator.share){try{await navigator.share({text:t})}catch(e){}}else window.open(waUrl(items),"_blank","noopener")};
  $("#csvAll").onclick=()=>download("order.csv",csv(sortedCart()));$("#clearAll").onclick=()=>{if(confirm("Remove everything from the cart?")){CART=[];saveCart();renderCart()}}}
 const txt=()=>exportText(sortedCart(),stockOn());
-function refreshTexts(){const t=txt();const ta=$("textarea[data-txt]");if(ta)ta.value=t;const a=$("#openWA");if(a)a.href="https://wa.me/?text="+encodeURIComponent(t)}
+function waUrl(items){const t=exportText(items,stockOn());const nums=[...new Set(items.map(destWa).filter(Boolean))];return nums.length===1?("https://wa.me/"+nums[0]+"?text="+encodeURIComponent(t)):"https://wa.me/?text="+encodeURIComponent(t)}
+function refreshTexts(){const items=sortedCart();const t=exportText(items,stockOn());const ta=$("textarea[data-txt]");if(ta)ta.value=t;
+ const a=$("#openWA");if(a){a.href=waUrl(items);const nums=[...new Set(items.map(destWa).filter(Boolean))];a.textContent=nums.length===1?("Open in WhatsApp (+"+fmtWa(nums[0])+")"):"Open in WhatsApp"}
+ const hint=$("#waHint");
+ const dests=$("#waDests");
+ if(dests){
+  const groups={};for(const c of items){const k=destWa(c)||"_pick";(groups[k]??=[]).push(c)}
+  const keys=Object.keys(groups);
+  if(keys.length>1 || (keys.length===1 && keys[0]!=="_pick" && items.some(c=>!destWa(c)))){
+    dests.innerHTML=keys.map(k=>{
+      const sub=groups[k], href=k==="_pick"?("https://wa.me/?text="+encodeURIComponent(exportText(sub,stockOn()))):("https://wa.me/"+k+"?text="+encodeURIComponent(exportText(sub,stockOn())));
+      const label=k==="_pick"?"Open other items in WhatsApp":("Open "+(stName(sub[0])||"seller")+" WhatsApp (+"+fmtWa(k)+")");
+      return `<div class="row2" style="margin-top:6px"><a class="btn wa" href="${href}" target="_blank" rel="noopener">${esc(label)}</a></div>`;
+    }).join("");
+  } else dests.innerHTML="";
+ }
+ if(hint){
+  const nums=[...new Set(items.map(destWa).filter(Boolean))];
+  hint.textContent=nums.length===1?`“Open in WhatsApp” opens a chat with ${stName(items.find(c=>destWa(c)))} (+${fmtWa(nums[0])}) with the message filled in. You tap send yourself.`:"“Share” and “Open in WhatsApp” only open WhatsApp with the message filled in. You pick the chat and tap send yourself.";
+ }
+}
 // ---------- history view ----------
 function renderHist(){const has=!!HDATA;$("#histEmpty").classList.toggle("hidden",has);$("#histBody").classList.toggle("hidden",!has);if(!has)return;
  const hc=$("#hContact"),cur=hc.value,cs=[...new Set(HDATA.curated.map(o=>o.contact))];
