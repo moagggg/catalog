@@ -45,6 +45,7 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 .blist{max-height:60vh;overflow:auto}.blist .bi{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:0 6px;border-bottom:1px solid var(--line);cursor:pointer}.blist .bi.on{color:var(--acc);font-weight:600}
 .tag.ns{background:#eef2ff;color:#3730a3;font-weight:600}.tag.bl{background:#fef3c7;color:#92400e}
 .tag.pf{background:#fff7d6;color:#8a5a00;font-weight:600}
+.tag.gr{background:#e7f6ec;color:#166534}.gen{font-size:13px;line-height:1.45;margin:8px 0;padding:8px 10px;background:#eefaf2;border:1px solid #cdebd6;border-radius:10px;word-break:break-word}.gen a{color:var(--acc);font-weight:600}.gen .meta{font-size:11.5px}
 .chip.pfc.on{background:#fff2c2;border-color:#e0b400;color:#6b4a00}.tag.br{background:#f3f4f6;color:#111;font-weight:600}
 .vers{margin:8px 0}.ver{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}.ver img{width:56px;height:56px;object-fit:cover;border-radius:8px;background:#eee}.ver .vm{font-size:13px;line-height:1.35;word-break:break-word}
 .chip.on{background:var(--acc2);border-color:var(--acc);color:var(--acc);font-weight:600}
@@ -186,6 +187,12 @@ textarea{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
 <script>
 "use strict";
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+let GEN=null,GENP=null;const genOf=a=>GEN&&GEN.get(a.key);const money=(p,c)=>(c==="USD"||!c?"$":c==="EUR"?"€":c==="GBP"?"£":c+" ")+Number(p).toLocaleString();
+function genLoad(){return GENP||(GENP=fetch("data/genuine.json").then(r=>r.ok?r.json():null).then(d=>{const m=new Map();if(d)for(const[c,ks]of Object.entries(d.i||{}))for(const k of ks)m.set(k,[...d.c[c],c]);GEN=m;
+ document.querySelectorAll("#grid .card").forEach(el=>{const th=el.querySelector(".th[data-ph]"),tg=el.querySelector(".tags");if(!th||!tg||tg.querySelector(".gr"))return;const a=ALB.get(th.dataset.ph);if(a)tg.insertAdjacentHTML("beforeend",genTag(a))})}).catch(()=>{GEN=new Map()}))}
+function genTag(a){const g=genOf(a);return !g?"":g[1]?`<span class="tag gr">Retail ${money(g[1],g[2])}</span>`:g[5]?`<span class="tag gr">Resale ${money(g[5],g[6])}</span>`:""}
+function genBlock(a){const g=genOf(a);if(!g)return"";const[n,rp,rc,rsrc,ru,sp,sc,ssrc,su,dt,code]=g;const L=(u,t)=>`<a href="${esc(u)}" target="_blank" rel="noopener nofollow">${t} ↗</a>`;
+ return `<div class="gen"><div><b>Genuine:</b> ${esc(n)}</div><div><b>Style:</b> ${esc(code)}</div><div>${rp?L(ru,`Retail ${money(rp,rc)}`)+` <span class="meta">(${esc(rsrc)})</span>`:""}${rp&&sp?"<br>":""}${sp?L(su,`Resale from ${money(sp,sc)}`)+` <span class="meta">(${esc(ssrc)}, resale)</span>`:""}</div><div class="meta">Retail price may be outdated · checked ${esc(dt)}</div></div>`}
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtD=iso=>{const[y,m,d]=String(iso).slice(0,10).split("-");return `${+m}/${+d}/${y.slice(2)}`};
 // WhatsApp contacts are private: they come from the imported history file or are added on this device
@@ -352,7 +359,7 @@ function card(a){const s=S.stores[a.si],src=thumb(a),h=HIST[a.key],vs=versOf(a),
  return `<div class="card${h?" hist":""}"><div class="th" data-ph="${esc(a.key)}">${src?`<img loading="lazy" decoding="async" src="${src}" alt="" onerror="this.remove()">`:esc(a.title.slice(0,40))}
  ${GN(a.key)?`<span class="cnt">${GN(a.key)} photo${GN(a.key)>1?"s":""} ▸</span>`:a.count?`<span class="cnt">${a.count} 📷</span>`:""}${h?`<span class="hb">★ ${esc(h[0].contact)} ${fmtD(h[0].date)}</span>`:""}</div>
  <div class="cb"><div class="t">${esc(a.en||a.title||"(untitled)")}</div>${a.en&&a.en!==a.title?`<div class="o">${esc(a.title)}</div>`:""}<div class="s">${esc(sName(s))} · ${esc(catLabel(a)||subName(a.gi,a.sc)||"—")}</div>
- <div class="tags">${a.pf?`<span class="tag pf">⭐ Preferred</span>`:""}${a.brand?`<span class="tag br">${esc(a.brand)}</span>`:""}${ns>1?`<span class="tag ns" data-ph="${esc(a.key)}">${ns} sellers${mp?` · from ¥${mp}`:""}</span>`:""}${a.bl?`<span class="tag bl" title="${esc(s.warn||"")}">⚠ blacklist</span>`:""}${a.code?`<span class="tag">#${esc(a.code)}</span>`:""}${a.size?`<span class="tag z${a.fit?" fit":""}">${a.fit?"✓ ":""}${esc(a.size)}</span>`:""}${a.price?`<span class="tag p">¥${esc(a.price)}${a.usd?` · $${esc(a.usd)}`:""}</span>`:""}</div>
+ <div class="tags">${a.pf?`<span class="tag pf">⭐ Preferred</span>`:""}${a.brand?`<span class="tag br">${esc(a.brand)}</span>`:""}${ns>1?`<span class="tag ns" data-ph="${esc(a.key)}">${ns} sellers${mp?` · from ¥${mp}`:""}</span>`:""}${a.bl?`<span class="tag bl" title="${esc(s.warn||"")}">⚠ blacklist</span>`:""}${genTag(a)}${a.code?`<span class="tag">#${esc(a.code)}</span>`:""}${a.size?`<span class="tag z${a.fit?" fit":""}">${a.fit?"✓ ":""}${esc(a.size)}</span>`:""}${a.price?`<span class="tag p">¥${esc(a.price)}${a.usd?` · $${esc(a.usd)}`:""}</span>`:""}</div>
  <div class="acts"><button class="btn sm pri" data-add="${esc(a.key)}">+ Order</button><a class="btn sm" href="${a.url}" target="_blank" rel="noopener" aria-label="${a.ext?"Open on Weidian":"Open on Yupoo"}">↗</a></div></div></div>`}
 function more(n=40){const end=Math.min(RES.length,shown+n);window._shownKeys=RES.slice(0,end).map(a=>a.key);$("#grid").insertAdjacentHTML("beforeend",RES.slice(shown,end).map(card).join(""));shown=end;$("#moreBtn").classList.toggle("hidden",shown>=RES.length)}
 $("#moreBtn").onclick=()=>{if(shown<RES.length)more();else ensure()};
@@ -417,10 +424,10 @@ function verList(a){const vs=versOf(a);if(vs.length<2)return "";vs.sort((x,y)=>(
  return `<div class="vers">${(()=>{const ns=new Set(vs.map(v=>v.si)).size;return ns>1?`<b>Sold by ${ns} sellers</b>${vs.length>ns?` · ${vs.length} listings`:""}`:`<b>Posted ${vs.length}× by this seller</b>`})()} <span class="meta">(same product, matched by photo)</span>`+vs.map(v=>{const st=S.stores[v.si];return `<div class="ver">${v===a?`<span class="meta" style="font-size:11px;text-align:center">this<br>photo</span>`:`<img loading="lazy" src="${thumb(v)}" alt="">`}
   <div class="vm"><b>${esc(sName(st))}</b>${v.pf?` <span class="tag pf">⭐ Preferred</span>`:""}${v.bl?` <span class="tag bl">⚠ blacklist</span>`:""}<br>${v.price?`¥${esc(v.price)}${v.usd?` ($${esc(v.usd)})`:""} · `:"price unknown · "}<a href="${v.url}" target="_blank" rel="noopener">${v.ext?"weidian":"album"} ↗</a><br><span class="meta">${esc(v.title.slice(0,60))}</span></div>
   <button class="btn sm pri" data-add="${esc(v.key)}">+ Order</button></div>`}).join("")+`</div>`}
-async function openPhotos(a){if(!a)return;const s=S.stores[a.si],h=HIST[a.key];const src=thumb(a);
+async function openPhotos(a){if(!a)return;if(!GEN)try{await Promise.race([genLoad(),new Promise(z=>setTimeout(z,2500))])}catch(e){}const s=S.stores[a.si],h=HIST[a.key];const src=thumb(a);
  $("#pBody").innerHTML=`<h3 style="margin:4px 40px 4px 0">${esc(a.title)}</h3><div class="meta">${esc(a.en&&a.en!==a.title?a.en:"")}</div>
  ${verList(a)}
- <div class="prov">${a.brand?`<div><b>Brand:</b> ${esc(a.brand)}${a.model?` · <b>Model:</b> ${esc(a.model)}`:""}</div>`:a.model?`<div><b>Model:</b> ${esc(a.model)}</div>`:""}<div><b>Style:</b> ${esc(a.group)}${subName(a.gi,a.sc)?" › "+esc(subName(a.gi,a.sc)):""}${a.src==="p"?` <span class="meta">(type read from the photo)</span>`:a.src==="c"?` <span class="meta">(type from the seller's category)</span>`:""}</div>
+ ${genBlock(a)}<div class="prov">${a.brand?`<div><b>Brand:</b> ${esc(a.brand)}${a.model?` · <b>Model:</b> ${esc(a.model)}`:""}</div>`:a.model?`<div><b>Model:</b> ${esc(a.model)}</div>`:""}<div><b>Style:</b> ${esc(a.group)}${subName(a.gi,a.sc)?" › "+esc(subName(a.gi,a.sc)):""}${a.src==="p"?` <span class="meta">(type read from the photo)</span>`:a.src==="c"?` <span class="meta">(type from the seller's category)</span>`:""}</div>
  ${[a.gd?`<b>For:</b> ${{m:"men",w:"women",u:"unisex",k:"kids"}[a.gd]}`:"",a.colors.length?`<b>Color:</b> ${a.colors.map(i=>S.colors[i]).join(", ")}`:"",a.mat.length?`<b>Material:</b> ${a.mat.map(i=>(S.materials||[])[i]).join(", ")}`:"",a.size?`<b>Sizes:</b> ${esc(a.size)}${a.fit?" ✓ fits you":""}`:"",a.price?`<b>Price:</b> ¥${esc(a.price)}${a.usd?` (≈ $${esc(a.usd)})`:""}`:"",a.code?`<b>Code:</b> ${esc(a.code)}`:""].filter(Boolean).map(x=>`<div>${x}</div>`).join("")}
  <div><b>Seller:</b> <a href="${s.home||s.base+"/albums?uid=1"}" target="_blank" rel="noopener">${esc(sName(s))}</a> (${sellerKind(s)})${s.pf?` <span class="tag pf">⭐ Preferred seller</span>`:""}${s.warn?` <span style="color:#b45309">⚠ ${esc(s.warn)}</span>`:""}${s.wa?`</div><div><b>WhatsApp:</b> <a href="https://wa.me/${esc(s.wa)}" target="_blank" rel="noopener">+${fmtWa(s.wa)}</a>`:""}</div>
  <div><b>Album title:</b> ${esc(a.title)}${a.lit?`<br><b>Translation:</b> ${esc(a.lit)}`:""}${a.en?`<br><b>English:</b> ${esc(a.en)}`:""}</div>
@@ -562,7 +569,7 @@ function view(v){$$(".nav button").forEach(b=>b.classList.toggle("on",b.dataset.
 $$(".nav button").forEach(b=>b.onclick=()=>view(b.dataset.v));
 // ---------- init ----------
 (async function(){saveCart();
- S=await (await fetch("data/stores.json")).json();TBM=Object.fromEntries(S.stores.filter(x=>x.tb).map(x=>[x.id,x.tb]));GAL=S.gal||{};
+ S=await (await fetch("data/stores.json")).json();TBM=Object.fromEntries(S.stores.filter(x=>x.tb).map(x=>[x.id,x.tb]));GAL=S.gal||{};setTimeout(genLoad,1500);
  let gvT_;$("#gvS").addEventListener("scroll",()=>{clearTimeout(gvT_);gvT_=setTimeout(gvLoad,60)},{passive:true});$("#gvX").onclick=closeGallery;
  $("#gvInfo").onclick=()=>{const a=gvA;closeGallery();openPhotos(a)};document.addEventListener("keydown",e=>{if(!$("#gv").classList.contains("on"))return;const S_=$("#gvS");
   if(e.key==="Escape")closeGallery();if(e.key==="ArrowRight")S_.scrollBy({left:S_.clientWidth,behavior:"smooth"});if(e.key==="ArrowLeft")S_.scrollBy({left:-S_.clientWidth,behavior:"smooth"})});
