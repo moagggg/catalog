@@ -243,13 +243,28 @@ const GDONE={};const groupLoaded=gi=>(GDONE[gi]||0)>=shardsOf(gi).length;
 let loadingAll=null;
 let GSEL="",PREF=false,CSEL=false;   // CSEL: inside the Clothing parent (GSEL="" = All clothing, else one clothing category)  // selected style group index ("" = New arrivals / everything)
 function needAll(){return GSEL===""&&(PREF||$("#q").value.trim()||$("#fSeller").value!==""||$("#fHist").checked||$("#fPrice").checked||$("#fThumb").checked||$("#fColor").value!==""||$("#fGender").value!==""||$("#fFit").checked||$("#fSort").value!=="new")}
-async function ensure(){const list=[];if(GSEL===""&&!CSEL&&!needAll())return;
+// compact search index (data/sidx.json: token -> shard ids). A typed search loads only the shards that can match;
+// the exact filter in apply() is unchanged, so results are the same as loading everything.
+let SIDXP=null;const sidx=()=>SIDXP||(SIDXP=fetch("data/sidx.json").then(r=>r.ok?r.json():null).then(d=>{if(d){d.T=d.tok.split("\n");d.ix=new Map(d.shards.map((n,i)=>[n,i]))}return d}).catch(()=>null));
+function candShards(T,d){const N=d.shards.length;const add=(s,i)=>{const p=d.p[i];if(p===0)for(let k=0;k<N;k++)s.add(k);else for(const k of p)s.add(k)};
+ const scan=f=>{const s=new Set();for(let i=0;i<d.T.length;i++)if(f(d.T[i]))add(s,i);return s};const and=(a,b)=>a===null?b:new Set([...a].filter(x=>b.has(x)));
+ let acc=null;
+ for(const t of T){let s;
+  if(typeof t==="string"){if(/^\d+$/.test(t)){if(t.length>=6)return null;continue}s=scan(k=>k.includes(t))}   // long numbers (album ids) are not indexed
+  else{s=new Set();for(const w of t){let r=null;for(const part of w.split(" ").filter(Boolean)){const cj=/[\u3400-\u9fff]/.test(part);r=and(r,scan(k=>cj?k.includes(part):k.startsWith(part)))}if(r)for(const x of r)s.add(x)}}
+  acc=and(acc,s);if(!acc.size)break}
+ return acc}
+let EGEN=0,QDONE=null;const qDone=()=>GSEL===""&&QDONE!==null&&QDONE===$("#q").value.trim();   // every shard that can match this query is loaded
+async function ensure(){const list=[];if(GSEL===""&&!CSEL&&!needAll())return;const gen=++EGEN;
  const want=GSEL===""?(CSEL&&!needAll()?[...CL()]:S.groups.map((_,i)=>i)):[+GSEL];
- for(const i of want)for(const n of shardsOf(i))if(!LOADED.has(n))list.push([i,n]);
- if(!list.length)return;
+ let cand=null;const qv=$("#q").value.trim();
+ if(GSEL===""&&qv){const d=await sidx();if(gen!==EGEN)return;if(d){const c=candShards(terms(qv),d);if(c)cand=n=>{const i=d.ix.get(n);return i===undefined||c.has(i)}}}
+ QDONE=null;
+ for(const i of want)for(const n of shardsOf(i))if(!LOADED.has(n)&&(!cand||cand(n)))list.push([i,n]);
+ if(!list.length){if(cand){QDONE=qv;apply(true)}return}
  // all-store browsing without search: recent rows are enough to start, keep loading in background
  let done=0;const total=list.length;$("#prog").style.width="5%";
- for(const [i,c] of list){await loadShard(i,c);done++;$("#prog").style.width=(100*done/total)+"%";if(done%2===0||done===total)apply(true)}
+ for(const [i,c] of list){await loadShard(i,c);if(gen!==EGEN){apply(true);return}done++;$("#prog").style.width=(100*done/total)+"%";if(done===total&&cand)QDONE=qv;if(done%2===0||done===total)apply(true)}
  setTimeout(()=>$("#prog").style.width="0",400)}
 // ---------- helpers ----------
 let TBM={};const TP=(sid,id)=>`${TBM[sid]||""}t/${sid}/${id}.webp`;
@@ -331,8 +346,8 @@ function boostPref(L){const P=[],O=[];L.forEach((a,i)=>(a.pf||(a.dg&&versOf(a).s
  const bhome=GSEL===""&&!CSEL&&BSEL!==""&&!q.length&&si==="";const home=!bhome&&!PREF&&!CSEL&&GSEL===""&&BSEL===""&&!q.length&&si===""&&!th&&!hi&&!pr&&col===""&&!fit&&so==="new";$("#tilesWrap").innerHTML=home?tiles():bhome?brandTiles():"";
  if(bhome){RES=[];$("#grid").innerHTML="";shown=0}
  const tot=S.groups.reduce((n,g)=>n+CN(g),0),totL=S.groups.reduce((n,g)=>n+LT(g),0);
- $("#resInfo").textContent=bhome?`${S.brands[BSEL]}: pick a category`:home?`${tot.toLocaleString()} products · ${totL.toLocaleString()} listings`:(BSEL!==""?S.brands[BSEL]+" › ":"")+(GSEL===""?(CSEL?"Clothing: ":""):(CSEL?"Clothing › ":"")+S.groups[GSEL].name+(SSEL!==""?" › "+subName(+GSEL,+SSEL):"")+": ")+`${RES.length.toLocaleString()} products`+(nList>RES.length?` (${nList.toLocaleString()} listings)`:"")+(si!==""?` in ${S.stores[si].id}`:"")+(loaded<total&&!bhome?` · loading ${Math.round(100*loaded/total)}%`:"");
- $("#emptyMsg").classList.toggle("hidden",bhome||!!RES.length||(loaded<total&&!home));$("#moreBtn").classList.toggle("hidden",bhome||(shown>=RES.length&&(loaded>=total||home)));syncChips()}
+ $("#resInfo").textContent=bhome?`${S.brands[BSEL]}: pick a category`:home?`${tot.toLocaleString()} products · ${totL.toLocaleString()} listings`:(BSEL!==""?S.brands[BSEL]+" › ":"")+(GSEL===""?(CSEL?"Clothing: ":""):(CSEL?"Clothing › ":"")+S.groups[GSEL].name+(SSEL!==""?" › "+subName(+GSEL,+SSEL):"")+": ")+`${RES.length.toLocaleString()} products`+(nList>RES.length?` (${nList.toLocaleString()} listings)`:"")+(si!==""?` in ${S.stores[si].id}`:"")+((loaded<total&&!qDone())&&!bhome?` · loading ${Math.round(100*loaded/total)}%`:"");
+ $("#emptyMsg").classList.toggle("hidden",bhome||!!RES.length||((loaded<total&&!qDone())&&!home));$("#moreBtn").classList.toggle("hidden",bhome||(shown>=RES.length&&(loaded>=total||home)));syncChips()}
 function card(a){const s=S.stores[a.si],src=thumb(a),h=HIST[a.key],vs=versOf(a),ns=new Set(vs.map(v=>v.si)).size,mp=ns>1?minPrice(vs):0;
  return `<div class="card${h?" hist":""}"><div class="th" data-ph="${esc(a.key)}">${src?`<img loading="lazy" decoding="async" src="${src}" alt="" onerror="this.remove()">`:esc(a.title.slice(0,40))}
  ${GN(a.key)?`<span class="cnt">${GN(a.key)} photo${GN(a.key)>1?"s":""} ▸</span>`:a.count?`<span class="cnt">${a.count} 📷</span>`:""}${h?`<span class="hb">★ ${esc(h[0].contact)} ${fmtD(h[0].date)}</span>`:""}</div>
@@ -399,7 +414,7 @@ document.addEventListener("click",e=>{const t=e.target.closest("[data-ph],[data-
  if(t.dataset.ph){const a=ALB.get(t.dataset.ph);if(a&&GN(a.key)&&t.classList.contains("th"))openGallery(a);else openPhotos(a)}if(t.dataset.add)openAdd(ALB.get(t.dataset.add))});
 $$(".sheet").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("on")}));
 function verList(a){const vs=versOf(a);if(vs.length<2)return "";vs.sort((x,y)=>(y.pf-x.pf)||(parseFloat(x.price)||1e9)-(parseFloat(y.price)||1e9));
- return `<div class="vers"><b>Sold by ${new Set(vs.map(v=>v.si)).size} sellers</b> <span class="meta">(same product, matched by photo)</span>`+vs.map(v=>{const st=S.stores[v.si];return `<div class="ver">${v===a?`<span class="meta" style="font-size:11px;text-align:center">this<br>photo</span>`:`<img loading="lazy" src="${thumb(v)}" alt="">`}
+ return `<div class="vers">${(()=>{const ns=new Set(vs.map(v=>v.si)).size;return ns>1?`<b>Sold by ${ns} sellers</b>${vs.length>ns?` · ${vs.length} listings`:""}`:`<b>Posted ${vs.length}× by this seller</b>`})()} <span class="meta">(same product, matched by photo)</span>`+vs.map(v=>{const st=S.stores[v.si];return `<div class="ver">${v===a?`<span class="meta" style="font-size:11px;text-align:center">this<br>photo</span>`:`<img loading="lazy" src="${thumb(v)}" alt="">`}
   <div class="vm"><b>${esc(sName(st))}</b>${v.pf?` <span class="tag pf">⭐ Preferred</span>`:""}${v.bl?` <span class="tag bl">⚠ blacklist</span>`:""}<br>${v.price?`¥${esc(v.price)}${v.usd?` ($${esc(v.usd)})`:""} · `:"price unknown · "}<a href="${v.url}" target="_blank" rel="noopener">${v.ext?"weidian":"album"} ↗</a><br><span class="meta">${esc(v.title.slice(0,60))}</span></div>
   <button class="btn sm pri" data-add="${esc(v.key)}">+ Order</button></div>`}).join("")+`</div>`}
 async function openPhotos(a){if(!a)return;const s=S.stores[a.si],h=HIST[a.key];const src=thumb(a);
