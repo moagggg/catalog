@@ -351,7 +351,7 @@ const MENU=[["Electronics",["Electronics"]],["Shoes",["Shoes","Slides & sandals"
  ["Clothing",["T-shirts","Polos","Dress shirts","Long sleeves","Sweaters","Hoodies","Jackets & coats","Down & padded","Suits","Pants","Jeans","Shorts","Sets & tracksuits","Underwear & socks"]],
  ["Women's",["Women's"]],
  ["Bags & accessories",["Bags","Wallets","Luggage","Belts","Hats & scarves","Glasses","Watches","Jewelry","Accessories","Perfume"]],
- ["Kids & baby",["Kids"]],["Toys & Squishies",["Toys","Squishies"]],["Home",["Home"]]];
+ ["Kids & baby",["Baby","Kids"]],["Toys & Squishies",["Toys","Squishies"]],["Home",["Home"]]];
 function menuSections(){const used=new Set(),out=[];const byName=new Map(S.groups.map((g,i)=>[g.name,i]));
  for(const [sec,names] of MENU){const ids=names.map(n=>byName.get(n)).filter(i=>i!==undefined);ids.forEach(i=>used.add(i));if(ids.length)out.push([sec,ids])}
  const un=byName.get("Unsorted"),rest=S.groups.map((_,i)=>i).filter(i=>!used.has(i)&&i!==un);
