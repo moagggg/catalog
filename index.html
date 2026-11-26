@@ -480,8 +480,8 @@ function renderCart(){const body=$("#cartBody");if(!CART.length){body.innerHTML=
    <button class="btn sm" data-del="${c.i}" aria-label="Remove">✕</button></div>`}
  h+=`<details style="margin-top:10px"><summary class="lab" style="cursor:pointer">Preview the WhatsApp message</summary><textarea rows="16" data-txt readonly></textarea></details>
  <div class="bigbar"><button class="btn pri" id="copyWA">📋 Copy for WhatsApp</button><button class="btn wa" id="shareWA" style="flex:none;width:110px">Share ↗</button></div>
- <div class="row2" style="margin-top:8px"><a class="btn" id="openWA" target="_blank" rel="noopener">Open in WhatsApp</a><button class="btn" id="csvAll">⬇ CSV</button></div>
- <div class="row2" style="margin-top:8px"><button class="btn" id="clearAll">Clear cart</button></div>
+ <a class="btn" id="openWA" target="_blank" rel="noopener" style="width:100%;margin-top:8px;display:block;text-align:center">Open in WhatsApp</a>
+ <div class="row2" style="margin-top:8px"><button class="btn" id="csvAll">⬇ CSV</button><button class="btn" id="clearAll">Clear cart</button></div>
  <div id="waDests"></div>
  <p class="meta" id="waHint">“Share” and “Open in WhatsApp” only open WhatsApp with the message filled in. You pick the chat and tap send yourself.</p></div>`;
  body.innerHTML=h;refreshTexts();
